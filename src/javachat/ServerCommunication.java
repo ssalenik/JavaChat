@@ -1,58 +1,70 @@
 package javachat;
 
-import java.nio.ByteBuffer;
+import java.io.*;
+import java.net.*;
+import javachat.JavaChatMessage;;
 
 public class ServerCommunication {
-	final static int MSG_INT_SIZE = 4; // size of integer in bytes for our messages
-	final static int[] MSG_TYPE_RANGE = {0,9}; // value range of message types (0 - 9)
+	private Socket socket;
+	private DataOutputStream outStream;
+	private DataInputStream inStream;
 	
-	/**
-	 * Converts message parameters into byte array ready to be sent to the chat server.
-	 * 
-	 * @param messageType
-	 * @param subMessageType
-	 * @param messageData
-	 * @return Returns byte array containing the message.
-	 */
-	public static byte[] messageToByteArray(
-			int messageType, int subMessageType, String messageData) throws IllegalArgumentException {
-		// check input
-		if(messageType < MSG_TYPE_RANGE[0] || messageType > MSG_TYPE_RANGE[1]) {
-			throw new IllegalArgumentException(
-					"Invalid message type, must be between " + MSG_TYPE_RANGE[0] + " and " + MSG_TYPE_RANGE[1]);
+	public ServerCommunication(String hostName, int portNumber) throws IOException {
+		Socket newSocket = new Socket(hostName, portNumber);
+		this.setSocket(newSocket);
+	}
+	
+	public ServerCommunication(Socket socket) throws IOException {
+		this.setSocket(socket);
+	}
+	
+	public void setSocket(Socket socket) throws IOException {
+		// close previous socket if it exists
+		this.closeSocket();
+		
+		this.socket = socket;
+    	this.outStream = new DataOutputStream(socket.getOutputStream());
+    	this.inStream = new DataInputStream(socket.getInputStream());
+	}
+	
+	public void closeSocket() throws IOException {
+		if(this.outStream != null) {
+			this.outStream.close();
 		}
-		if(subMessageType < MSG_TYPE_RANGE[0] || messageType > MSG_TYPE_RANGE[1]) {
-			throw new IllegalArgumentException(
-					"Invalid sub-message type, must be between " + MSG_TYPE_RANGE[0] + " and MSG_TYPE_RANGE[1]");
+		if(this.inStream != null) {
+			this.inStream.close();
 		}
-		
-		byte[] byteMessage = null;
-		
-		byte[] byteMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(messageType).array();
-    	byte[] byteSubMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(subMessageType).array();
-    	byte[] byteMessageData = messageData.getBytes();
-    	byte[] byteMessageSize = ByteBuffer.allocate(MSG_INT_SIZE).putInt(byteMessageData.length).array();
-		
-    	byteMessage = new byte[MSG_INT_SIZE * 3 + byteMessageData.length];
-    	System.arraycopy(byteMessageType, 0, byteMessage, 0, MSG_INT_SIZE);
-    	System.arraycopy(byteSubMessageType, 0, byteMessage, MSG_INT_SIZE, MSG_INT_SIZE);
-    	System.arraycopy(byteMessageSize, 0, byteMessage, MSG_INT_SIZE * 2, MSG_INT_SIZE);
-    	System.arraycopy(byteMessageData, 0, byteMessage, MSG_INT_SIZE * 3, byteMessageData.length);
+		if(this.socket != null) {
+			this.socket.close();
+		}
+	}
+	
+	public void sendMessage(JavaChatMessage message) throws IOException {
+		this.outStream.write(message.messageBytes);
+	}
+	
+	public JavaChatMessage readMessage() throws IOException {
+		byte[] byteMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
+    	byte[] byteSubMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
+    	byte[] byteMessageSize = new byte[JavaChatMessage.MSG_INT_SIZE];
     	
-		return byteMessage;
-	}
-	
-	public static int bytesToInt(byte[] byteArray) throws IllegalArgumentException {
-		// first check size of byteArray
-		if(byteArray.length != MSG_INT_SIZE) {
-			throw new IllegalArgumentException("Array length must be " + MSG_INT_SIZE);
-		}
-		int messageInt = ByteBuffer.wrap(byteArray).getInt();
-		return messageInt;
-	}
-	
-	public static String bytesToString(byte[] byteArray) {
-		return new String(byteArray);
+    	// read message
+    	this.inStream.read(byteMessageType, 0, JavaChatMessage.MSG_INT_SIZE);
+    	int messageType = JavaChatMessage.bytesToInt(byteMessageType);
+    	
+    	this.inStream.read(byteSubMessageType, 0, byteSubMessageType.length);
+    	int subMessageType = JavaChatMessage.bytesToInt(byteSubMessageType);
+    	
+    	this.inStream.read(byteMessageSize, 0, byteMessageSize.length);
+    	int messageSize = JavaChatMessage.bytesToInt(byteMessageSize);
+    	
+    	byte[] byteMessageData = new byte[messageSize];
+    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
+    	String messageData = JavaChatMessage.bytesToString(byteMessageData);
+    	
+    	byte[] messageBytes = new byte[JavaChatMessage.MSG_INT_SIZE * 3 + messageSize];
+    	
+    	return new JavaChatMessage(messageType, subMessageType, messageSize, messageData, messageBytes);
 	}
 
 }
