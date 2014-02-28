@@ -1,5 +1,6 @@
 package test;
 
+import javachat.*;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -25,16 +26,7 @@ public class ClientTest {
         	int subMessageType = 0;
         	String messageData = "Test Echo Message";
         	
-        	byte[] byteMessageType = ByteBuffer.allocate(4).putInt(messageType).array();
-        	byte[] byteSubMessageType = ByteBuffer.allocate(4).putInt(subMessageType).array();
-        	byte[] byteMessageData = messageData.getBytes();
-        	byte[] byteMessageSize = ByteBuffer.allocate(4).putInt(byteMessageData.length).array();
-        	
-        	byte[] byteMessage = new byte[4*3 + byteMessageData.length];
-        	System.arraycopy(byteMessageType, 0, byteMessage, 0, byteMessageType.length);
-        	System.arraycopy(byteSubMessageType, 0, byteMessage, 4, byteSubMessageType.length);
-        	System.arraycopy(byteMessageSize, 0, byteMessage, 8, byteMessageSize.length);
-        	System.arraycopy(byteMessageData, 0, byteMessage, 12, byteMessageData.length);
+        	byte[] byteMessage = ServerCommunication.messageToByteArray(messageType, subMessageType, messageData);
         	
         	// write message
         	out.write(byteMessage);
