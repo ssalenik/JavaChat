@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 public class JavaChatMessage {
 	final static int MSG_INT_SIZE = 4; // size of integer in bytes for our messages
 	final static int[] MSG_TYPE_RANGE = {0,9}; // value range of message types (0 - 9)
+	final static int MSG_MAX_SIZE = 262144; // maximum data payload size
 	
 	int messageType;
 	int subMessageType;
@@ -12,7 +13,7 @@ public class JavaChatMessage {
 	String messageData;
 	byte[] messageBytes = null;
 	
-	public JavaChatMessage(int messageType, String messageData) {
+	public JavaChatMessage(int messageType, String messageData) throws IllegalArgumentException {
 		this.messageType = messageType;
 		this.subMessageType = 0;
 		this.messageData = messageData;
@@ -35,11 +36,16 @@ public class JavaChatMessage {
 			+ " | \"" + messageData + "\" ]";
 	}
 	
-	private void getMessageByteArray() {
+	private void getMessageByteArray() throws IllegalArgumentException {
 		byte[] byteMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageType).array();
     	byte[] byteSubMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.subMessageType).array();
     	byte[] byteMessageData = this.messageData.getBytes();
     	this.messageSize = byteMessageData.length;
+    	
+    	// check max msg size
+    	if(this.messageSize > MSG_MAX_SIZE) {
+    		throw new IllegalArgumentException("Message data exceeds maximum size: " + MSG_MAX_SIZE + "bytes");
+    	}
     	byte[] byteMessageSize = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageSize).array();
 		
     	this.messageBytes = new byte[MSG_INT_SIZE * 3 + byteMessageData.length];
