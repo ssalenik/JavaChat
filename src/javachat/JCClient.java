@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 
 import javax.swing.*;
+import javachat.Commands;
 
 public class JCClient extends JFrame {
 	
@@ -22,6 +23,7 @@ public class JCClient extends JFrame {
 	
 	private static JTextArea msg;
 	private static JTextArea input;
+	private static Timer queryTimer;
 
 	public JCClient() {
 		
@@ -52,16 +54,17 @@ public class JCClient extends JFrame {
         input.addFocusListener(new FocusListener() {        	
         	@Override
         	public void focusGained(FocusEvent evt) {
-                input.setText(null);
+                //input.setText(null);
             }
         	
         	@Override
         	public void focusLost(FocusEvent evt) {}        	
         });
         
+
+    	// event handler for pressing the Enter key
         input.addKeyListener(new KeyListener() {        	
         	@Override
-        	// event handler for pressing the Enter key
         	public void keyPressed(KeyEvent evt) {
         		int key = evt.getKeyCode();
         		if (key == KeyEvent.VK_ENTER) {
@@ -82,6 +85,15 @@ public class JCClient extends JFrame {
 				                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         input.setPreferredSize(new Dimension(WIDTH,28));
         chatPanel.add(sp2); 
+        
+        //Timer to query server
+        ActionListener timerListener = new ActionListener() {
+        	@Override
+        	public void actionPerformed(ActionEvent evt) {
+        		sendMessage( jcmf.queryMessages() );
+        	}
+        };
+        queryTimer = new Timer(1000, timerListener);
 
         setTitle("JavaChat");
         setSize(WIDTH, HEIGHT);
@@ -116,80 +128,90 @@ public class JCClient extends JFrame {
 		String[] args = arg.trim().split(" "); // split the argument into tokens
 		
 		// make the commands case-insensitive
-		switch (cmd.toLowerCase()) {
-			case "exit": 	if (arg != "") { 
-								writeToScreen("> Error: No arguments required for \'EXIT\' command");
-								break;
-							}
-							sendMessage( jcmf.exit() );
-							System.exit(1);
-							break;
-							
-			case "echo": 	if (arg == "") { 
-								writeToScreen("> Usage: ECHO [message] ");
-								break;
-							}
-							sendMessage( jcmf.echo(arg) );
-							break;
-							
-			case "login":	if (args.length != 2) { 
-								writeToScreen("> Usage: LOGIN [username] [password] ");
-								break;
-							}
-							sendMessage( jcmf.login(args[0], args[1]) );
-							break;
-							
-			case "logoff":	if (arg != "") { 
-								writeToScreen("> Error: No arguments required for \'LOGOFF\' command");
-								break;
-							}
-							sendMessage( jcmf.logoff() );
-							break;
-							
-			case "add":		if (args.length != 2) { 
-								writeToScreen("> Usage: ADD [username] [password] ");
-								break;
-							}
-							sendMessage( jcmf.createUser(args[0], args[1]) );
-							break;
+		String command = cmd.toLowerCase();	
+		
+		if ( command.equals(Commands.EXIT.getText()) ) {
+			if (arg != "") { 
+				writeToScreen("> Error: No arguments required for \'EXIT\' command");
+				return;
+			}
+			sendMessage( jcmf.exit() );
+			System.exit(1);
+		}
+		
+		else if ( command.equals(Commands.ECHO.getText()) ) {
+			if (arg == "") { 
+				writeToScreen("> Usage: ECHO [message] ");
+				return;
+			}
+			sendMessage( jcmf.echo(arg) );
+		}
+
+		else if ( command.equals(Commands.LOGIN.getText()) ) {
+			if (args.length != 2) { 
+				writeToScreen("> Usage: LOGIN [username] [password] ");
+				return;
+			}
+			sendMessage( jcmf.login(args[0], args[1]) );
+		}
+		
+		else if ( command.equals(Commands.LOGOFF.getText()) ) {
+			if (arg != "") { 
+				writeToScreen("> Error: No arguments required for \'LOGOFF\' command");
+				return;
+			}
+			sendMessage( jcmf.logoff() );
+		}
+		
+		else if ( command.equals(Commands.CREATE_USER.getText()) ) {
+			if (args.length != 2) { 
+				writeToScreen("> Usage: ADD [username] [password] ");
+				return;
+			}
+			sendMessage( jcmf.createUser(args[0], args[1]) );
+		}
+		
+		else if ( command.equals(Commands.DELETE_USER.getText()) ) {
+			if (arg != "") { 
+				writeToScreen("> Error: No arguments required for \'DEL\' command");
+				return;
+			}
+			sendMessage( jcmf.deleteUser() );
+		}
+		
+		else if ( command.equals(Commands.CREATE_STORE.getText()) ) {
+			if (arg != "") { 
+				writeToScreen("> Error: No arguments required for \'STORE\' command");
+				return;
+			}
+			sendMessage( jcmf.createStore() );
+		}
+		
+		else if ( command.equals(Commands.SEND_MSG.getText()) ) {
+			// concatenate all the tokens from index 1 onward to form the message string
+			StringBuilder b = new StringBuilder();				
+			for (int i=1; i<args.length; i++) {
+			    if (b.length() > 0) {
+			    	b.append(" ");
+			    }
+			    b.append(args[i]);
+			}				
+			String message = b.toString();
+			System.out.println(message);
 			
-			case "del":		if (arg != "") { 
-								writeToScreen("> Error: No arguments required for \'DEL\' command");
-								break;
-							}
-							sendMessage( jcmf.deleteUser() );
-							break;
-							
-			case "store":	if (arg != "") { 
-								writeToScreen("> Error: No arguments required for \'STORE\' command");
-								break;
-							}
-							sendMessage( jcmf.createStore() );
-							break;
-							
-			case "msg":		// concatenate all the tokens from index 1 onward to form the message string
-							StringBuilder b = new StringBuilder();				
-							for (int i=1; i<args.length; i++) {
-							    if (b.length() > 0) {
-							    	b.append(" ");
-							    }
-							    b.append(args[i]);
-							}				
-							String message = b.toString();
-							System.out.println(message);
-							
-							sendMessage( jcmf.sendMessageToUser(args[0], message) );
-							break;
-							
-			case "query":	if (arg != "") { 
-								writeToScreen("> Error: No arguments required for \'QUERY\' command");
-								break;
-							}
-							sendMessage( jcmf.queryMessages() );
-							break;
-			
-			default: 		writeToScreen("> Error: Unknown command \'" + cmd + "\'");
-							break;
+			sendMessage( jcmf.sendMessageToUser(args[0], message) );
+		}
+		
+		else if ( command.equals(Commands.QUERY_MSG.getText()) ) {
+			if (arg != "") { 
+				writeToScreen("> Error: No arguments required for \'QUERY\' command");
+				return;
+			}
+			sendMessage( jcmf.queryMessages() );
+		}
+		
+		else {
+			writeToScreen("> Error: Unknown command \'" + cmd + "\'");
 		}
 	}	
 
@@ -224,11 +246,26 @@ public class JCClient extends JFrame {
 	}
 	
 	public static void handleReply(JavaChatMessage inMessage) {
-		//maybe do some other stuff here later
+		int type = inMessage.getMessageType();
+		int subType = inMessage.getSubMessageType();
+		
+		// login successful, start query timer
+		if (type == Commands.LOGIN.getId() && subType == 0) {
+			queryTimer.start();
+		}
+		
+		// stop query timer on logoff
+		else if (type == Commands.LOGOFF.getId()) {
+			queryTimer.stop();
+		}
+		
+		// if query returns nothing, don't print
+		else if (type == Commands.QUERY_MSG.getId() && subType == 0) {
+			return;
+		}
 		
 		writeToScreen("> " + inMessage.getMessageData());
 	}
-	
 
     public static void main(String[] args) {
 

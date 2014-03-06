@@ -1,27 +1,10 @@
 package javachat;
 
 import javachat.JavaChatMessage;
+import javachat.Commands;
 
 public class JCMFactory {
 	
-	// is this really better than declaring constants? ehhh
-	public enum cmd {
-		EXIT(0),
-		BADLY_FORMATTED_MSG(1),
-		ECHO(2),
-		LOGIN(3),
-		LOGOFF(4),
-		CREATE_USER(5),
-		DELETE_USER(6),
-		CREATE_STORE(7),
-		SEND_MSG(8),
-		QUERY_MSG(9);
-		
-		private int id;
-		private cmd(int id) {
-			this.id = id;
-		}	
-	}
 	
 	/* this should be changed to an enum
 	final static int CMD_EXIT = 0;
@@ -47,39 +30,39 @@ public class JCMFactory {
 	public JCMFactory() {}
 	
 	public JavaChatMessage exit() {
-		return new JavaChatMessage( cmd.EXIT.id, " " );
+		return new JavaChatMessage( Commands.EXIT.getId(), " " );
 	}
 	
 	public JavaChatMessage echo(String messageData) {
-		return new JavaChatMessage (cmd.ECHO.id, messageData );
+		return new JavaChatMessage (Commands.ECHO.getId(), messageData );
 	}
 	
 	public JavaChatMessage login(String user, String pass) {
-		return new JavaChatMessage( cmd.LOGIN.id, formatArgs(user, pass) );
+		return new JavaChatMessage( Commands.LOGIN.getId(), formatArgs(user, pass) );
 	}
 	
 	public JavaChatMessage logoff() {
-		return new JavaChatMessage( cmd.LOGOFF.id, " ");
+		return new JavaChatMessage( Commands.LOGOFF.getId(), " ");
 	}
 	
 	public JavaChatMessage createUser(String user, String pass) {
-		return new JavaChatMessage( cmd.CREATE_USER.id, formatArgs(user, pass) );
+		return new JavaChatMessage( Commands.CREATE_USER.getId(), formatArgs(user, pass) );
 	}
 	
 	public JavaChatMessage deleteUser() {
-		return new JavaChatMessage( cmd.DELETE_USER.id, " " );
+		return new JavaChatMessage( Commands.DELETE_USER.getId(), " " );
 	}
 	
 	public JavaChatMessage createStore() {
-		return new JavaChatMessage( cmd.CREATE_STORE.id, " " );
+		return new JavaChatMessage( Commands.CREATE_STORE.getId(), " " );
 	}
 	
 	public JavaChatMessage sendMessageToUser(String destUser, String msg) {
-		return new JavaChatMessage( cmd.SEND_MSG.id, formatArgs(destUser, msg) );
+		return new JavaChatMessage( Commands.SEND_MSG.getId(), formatArgs(destUser, msg) );
 	}
 	
 	public JavaChatMessage queryMessages() {
-		return new JavaChatMessage( cmd.QUERY_MSG.id, " " );
+		return new JavaChatMessage( Commands.QUERY_MSG.getId(), " " );
 	}
 	
 	// Concatenates two strings and separates them with a comma
