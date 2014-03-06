@@ -10,7 +10,8 @@ public enum Commands {
 	DELETE_USER(6, "del"),
 	CREATE_STORE(7, "store"),
 	SEND_MSG(8, "msg"),
-	QUERY_MSG(9, "query");
+	QUERY_MSG(9, "query"),
+	HELP(10, "help");
 	
 	private int id;
 	private String text;

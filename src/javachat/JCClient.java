@@ -210,6 +210,20 @@ public class JCClient extends JFrame {
 			sendMessage( jcmf.queryMessages() );
 		}
 		
+		else if ( command.equals(Commands.HELP.getText()) ) {
+			writeToScreen("\nAVAILABLE COMMANDS\n" +
+					Commands.EXIT.getText() + " : disconnect from the server and exit the program\n" +
+					Commands.ECHO.getText() + " [msg] : sends a message to the server, which echoes it back\n" +
+					Commands.LOGIN.getText() + " [username] [password] : logs in to the server with the username and password provided\n" +
+					Commands.LOGOFF.getText() + " : logs the current user out\n" +
+					Commands.CREATE_USER.getText() + " [username] [password] : creates a new user with the username and password provided\n" +
+					Commands.DELETE_USER.getText() + " : deletes the account of the current user\n" +
+					Commands.CREATE_STORE.getText() + " : creates a message store for the current user (do this only once per account)\n" +
+					Commands.SEND_MSG.getText() + " [recipient] [msg] : sends a message to the given recipient\n" +
+					Commands.QUERY_MSG.getText() + " : manually query the server for messages\n" 
+					);
+		}
+		
 		else {
 			writeToScreen("> Error: Unknown command \'" + cmd + "\'");
 		}
