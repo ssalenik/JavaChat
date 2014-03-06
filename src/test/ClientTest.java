@@ -20,23 +20,9 @@ public class ClientTest {
         String hostName = "dsp2014.ece.mcgill.ca";
         int portNumber = 5000;
         
-    	String user1 = "qrrkjkk";
-    	String pass = "pass1";
-    	String user2 = "qrrkjk";
- 
         try {
         	server = new ServerCommunication(hostName, portNumber);        	
         	jcmf = new JCMFactory();
-        	
-        	sendTestMessage( jcmf.login(user1, pass) ); 
-        	sendTestMessage( jcmf.sendMessageToUser(user2, "TEST MSG 1"));
-        	sendTestMessage( jcmf.sendMessageToUser(user2, "TEST MSG 2"));
-        	sendTestMessage( jcmf.sendMessageToUser(user2, "TEST MSG 3"));
-        	sendTestMessage( jcmf.logoff() );
-        	
-        	sendTestMessage( jcmf.login(user2, pass) ); 
-        	sendTestMessage( jcmf.queryMessages() );
-        	sendTestMessage( jcmf.logoff() );
 
         	server.closeSocket();
  
@@ -50,7 +36,7 @@ public class ClientTest {
         }
     }
 	
-	// Sends a message to the server. Prints both the sent message and the reply from the server.
+	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
 	public static void sendTestMessage(JavaChatMessage outMessage) {
 		
 		try {      	

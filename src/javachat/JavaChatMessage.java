@@ -110,5 +110,14 @@ public class JavaChatMessage {
 	public int getMessageType() {
 		return messageType;
 	}
+	
+	// Accessor method for the subtype identifier of a JavaChatMessage
+	public int getSubMessageType() {
+		return subMessageType;
+	}
+	
+	public String getMessageData() {
+		return messageData;
+	}
 
 }
