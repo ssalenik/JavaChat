@@ -105,5 +105,10 @@ public class JavaChatMessage {
 	public static String bytesToString(byte[] byteArray) {
 		return new String(byteArray);
 	}
+	
+	// Accessor method for the type identifier of a JavaChatMessage
+	public int getMessageType() {
+		return messageType;
+	}
 
 }

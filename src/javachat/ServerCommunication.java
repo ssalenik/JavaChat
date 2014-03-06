@@ -11,10 +11,12 @@ public class ServerCommunication {
 	
 	public ServerCommunication(String hostName, int portNumber) throws IOException {
 		Socket newSocket = new Socket(hostName, portNumber);
+		newSocket.setSoTimeout(250);	// need timeout to ensure that we don't block infinitely on read()
 		this.setSocket(newSocket);
 	}
 	
 	public ServerCommunication(Socket socket) throws IOException {
+		socket.setSoTimeout(250);
 		this.setSocket(socket);
 	}
 	
@@ -43,28 +45,37 @@ public class ServerCommunication {
 		this.outStream.write(message.messageBytes);
 	}
 	
+	/* 
+	 * Tries to read the input stream. If the read operation times out, returns a 
+	 * special JavaChatMessage of type -1 
+	 */
 	public JavaChatMessage readMessage() throws IOException {
-		byte[] byteMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
-    	byte[] byteSubMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
-    	byte[] byteMessageSize = new byte[JavaChatMessage.MSG_INT_SIZE];
-    	
-    	// read message
-    	this.inStream.read(byteMessageType, 0, JavaChatMessage.MSG_INT_SIZE);
-    	int messageType = JavaChatMessage.bytesToInt(byteMessageType);
-    	
-    	this.inStream.read(byteSubMessageType, 0, byteSubMessageType.length);
-    	int subMessageType = JavaChatMessage.bytesToInt(byteSubMessageType);
-    	
-    	this.inStream.read(byteMessageSize, 0, byteMessageSize.length);
-    	int messageSize = JavaChatMessage.bytesToInt(byteMessageSize);
-    	
-    	byte[] byteMessageData = new byte[messageSize];
-    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
-    	String messageData = JavaChatMessage.bytesToString(byteMessageData);
-    	
-    	byte[] messageBytes = new byte[JavaChatMessage.MSG_INT_SIZE * 3 + messageSize];
-    	
-    	return new JavaChatMessage(messageType, subMessageType, messageSize, messageData, messageBytes);
+		try {
+			byte[] byteMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
+	    	byte[] byteSubMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
+	    	byte[] byteMessageSize = new byte[JavaChatMessage.MSG_INT_SIZE];
+	    	    	
+	    	// read message
+	    	this.inStream.read(byteMessageType, 0, JavaChatMessage.MSG_INT_SIZE);
+	    	int messageType = JavaChatMessage.bytesToInt(byteMessageType);
+	    	
+	    	this.inStream.read(byteSubMessageType, 0, byteSubMessageType.length);
+	    	int subMessageType = JavaChatMessage.bytesToInt(byteSubMessageType);
+	    	
+	    	this.inStream.read(byteMessageSize, 0, byteMessageSize.length);
+	    	int messageSize = JavaChatMessage.bytesToInt(byteMessageSize);
+	    	
+	    	byte[] byteMessageData = new byte[messageSize];
+	    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
+	    	String messageData = JavaChatMessage.bytesToString(byteMessageData);
+	    	
+	    	byte[] messageBytes = new byte[JavaChatMessage.MSG_INT_SIZE * 3 + messageSize]; 
+	    	
+	    	return new JavaChatMessage(messageType, subMessageType, messageSize, messageData, messageBytes);
+	    	
+		} catch (java.net.SocketTimeoutException e) {
+			return new JavaChatMessage(-1, " ");	// socket timeout: return JCM of type -1
+		}
 	}
 
 }
