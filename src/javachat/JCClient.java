@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.event.*;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -72,8 +73,11 @@ public class JCClient extends JFrame {
         		int key = evt.getKeyCode();
         		if (key == KeyEvent.VK_ENTER) {
         			evt.consume(); // consume the '\n'
-        			parseUserInput(input.getText().trim());
-        			input.setText(null);	// clear input box
+        			String userInput = input.getText().trim();
+        			if(!userInput.equals("")) {
+        				parseUserInput(userInput);
+        				input.setText(null);	// clear input box
+        			}
         		}
         	}  
         	
@@ -238,23 +242,32 @@ public class JCClient extends JFrame {
 	}
 	
 	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
-	public static void sendMessage(JavaChatMessage outMessage) {
-		int messagesReceived = 0;
-		
+	public static void sendMessage(JavaChatMessage outMessage) {		
 		try {      	
 	    	System.out.println("sending message :\n" + outMessage);
 	    	server.sendMessage(outMessage);	  //send message to server 
-	    	
+	    		    	
 	    	/* 
 	    	 * Loop until at least one message is received and no more are available or the socket times out
+	    	 * Store replies in the order they are received.
 	    	 */
-	    	while ( server.messageAvailable() || messagesReceived <= 0 ) {
+	    	LinkedList<JavaChatMessage> replies = new LinkedList<JavaChatMessage>();
+	    	while ( server.messageAvailable() || replies.isEmpty() ) {
 	    		JavaChatMessage inMessage = server.readMessage();	// read reply from server
 	    		System.out.println("got reply :\n" + inMessage); // print reply message
-	    		handleReply(inMessage);
-	    		messagesReceived++;
+	    		replies.add(inMessage);
+	    		try {
+	    			Thread.sleep(100);
+	    		} catch (InterruptedException e) {
+	    			// sleep interrupted, this is OK
+	    		}
 	    	}
 	    	System.out.println("");
+	    	
+	    	// now handle the messages
+	    	for (JavaChatMessage inMessage : replies) {
+	    		handleReply(inMessage);
+	    	}
 	    	
 		} catch (IOException e) {
             System.err.println("Couldn't get I/O for the connection");
