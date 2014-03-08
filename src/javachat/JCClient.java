@@ -235,21 +235,20 @@ public class JCClient extends JFrame {
 	
 	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
 	public static void sendMessage(JavaChatMessage outMessage) {
+		int messagesReceived = 0;
 		
 		try {      	
 	    	System.out.println("sending message :\n" + outMessage);
 	    	server.sendMessage(outMessage);	  //send message to server 
 	    	
-	    	JavaChatMessage inMessage = server.readMessage();	// read reply from server
-	    	
 	    	/* 
-	    	 * Loop until the socket times out (returns a message with messageType -1). This loop 
-	    	 * is necessary to account for commands which return more than one message (i.e. query_msg)
+	    	 * Loop until at least one message is received and no more are available or the socket times out
 	    	 */
-	    	while (inMessage.getMessageType() > 0) {
+	    	while ( server.messageAvailable() || messagesReceived <= 0 ) {
+	    		JavaChatMessage inMessage = server.readMessage();	// read reply from server
 	    		System.out.println("got reply :\n" + inMessage); // print reply message
 	    		handleReply(inMessage);
-	    		inMessage = server.readMessage();	// read reply from server
+	    		messagesReceived++;
 	    	}
 	    	System.out.println("");
 	    	

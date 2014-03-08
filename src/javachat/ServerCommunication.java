@@ -2,6 +2,7 @@ package javachat;
 
 import java.io.*;
 import java.net.*;
+
 import javachat.JavaChatMessage;;
 
 public class ServerCommunication {
@@ -75,6 +76,14 @@ public class ServerCommunication {
 	    	
 		} catch (java.net.SocketTimeoutException e) {
 			return new JavaChatMessage(-1, " ");	// socket timeout: return JCM of type -1
+		}
+	}
+	
+	public boolean messageAvailable() throws IOException {
+		if(this.inStream.available() > 0 ) {
+			return true;
+		} else {
+			return false;
 		}
 	}
 
