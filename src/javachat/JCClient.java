@@ -148,7 +148,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Usage: ECHO [message] ");
 				return;
 			}
-			sendMessage( jcmf.echo(arg) );
+			sendMessage( jcmf.echo(args[0]) );
 		}
 
 		else if ( command.equals(Commands.LOGIN.getText()) ) {
