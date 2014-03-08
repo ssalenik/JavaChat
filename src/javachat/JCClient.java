@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+
 import javachat.Commands;
 
 public class JCClient extends JFrame {
@@ -36,6 +38,7 @@ public class JCClient extends JFrame {
         JPanel chatPanel = new JPanel();
         chatPanel.setLayout(new BoxLayout(chatPanel, BoxLayout.Y_AXIS));
         add(chatPanel);
+        chatPanel.setBorder(new EmptyBorder(5, 5, 5, 5) );
         
         // Main text area (read-only)
         msg = new JTextArea(); 
@@ -68,6 +71,7 @@ public class JCClient extends JFrame {
         	public void keyPressed(KeyEvent evt) {
         		int key = evt.getKeyCode();
         		if (key == KeyEvent.VK_ENTER) {
+        			evt.consume(); // consume the '\n'
         			parseUserInput(input.getText().trim());
         			input.setText(null);	// clear input box
         		}
@@ -121,7 +125,7 @@ public class JCClient extends JFrame {
 		String arg = "";
 		if(input.contains(" ")){
 			cmd = input.substring(0, input.indexOf(" ")); 	//extract the command from the user input
-			arg = input.substring(input.indexOf(" "), input.length()); 
+			arg = input.substring(input.indexOf(" "), input.length());
 		}		
 		writeToScreen("\n" + cmd + " " + arg);
 		
