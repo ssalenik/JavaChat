@@ -33,6 +33,11 @@ public class JCClient extends JFrame {
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
+	
+	/* this is used to make sure there is some white space at the bottom
+	 * of the output text pane for lgibility
+	 */
+	public static final String WHITE_SPACE_PADDING = "\n\n\n\n\n\n\n";
 
 	public JCClient() {
 		
@@ -52,7 +57,7 @@ public class JCClient extends JFrame {
         msg.setEditable(false);
         msg.setFont(new Font("Arial", Font.BOLD, 12));
         msg.setForeground(Color.BLACK);
-        msg.setMargin(new Insets(10, 5, 20, 5));
+        msg.setMargin(new Insets(10, 5, 0, 5));
         JScrollPane sp = new JScrollPane(msg);
         sp.setPreferredSize(new Dimension(WIDTH,570));        
         chatPanel.add(sp);
@@ -284,9 +289,31 @@ public class JCClient extends JFrame {
 		}
 	}	
 
+	/**
+	 * Writes to the end of the output TextPane.
+	 * 
+	 * @param str
+	 */
 	public void writeToScreen(String str) {
 		try {
+			// get the location of the end of the text
 			int offset = msgDocument.getEndPosition().getOffset();
+			
+			// make sure there is some new lines at the bottom for legibility
+			int whiteSpaceLen = WHITE_SPACE_PADDING.length();
+			if(offset >= whiteSpaceLen) {
+				if (msgDocument.getText(
+						offset - whiteSpaceLen,
+						whiteSpaceLen).equals(WHITE_SPACE_PADDING))
+				{
+					offset = offset - whiteSpaceLen;
+				} else {
+					msgDocument.insertString(offset, WHITE_SPACE_PADDING, null);
+				}
+			} else {
+				msgDocument.insertString(offset, WHITE_SPACE_PADDING, null);
+			}
+			
 			msgDocument.insertString(offset, "\n" + str, null);
 			
 			// now scroll to the end
@@ -297,40 +324,6 @@ public class JCClient extends JFrame {
 			e.printStackTrace();
 		}
 	}
-	
-	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
-//	public void sendMessage(JavaChatMessage outMessage) {		
-//		try {      	
-//	    	System.out.println("sending message :\n" + outMessage);
-//	    	server.sendMessage(outMessage);	  //send message to server 
-//	    		    	
-//	    	/* 
-//	    	 * Loop until at least one message is received and no more are available or the socket times out
-//	    	 * Store replies in the order they are received.
-//	    	 */
-//	    	LinkedList<JavaChatMessage> replies = new LinkedList<JavaChatMessage>();
-//	    	while ( server.messageAvailable() || replies.isEmpty() ) {
-//	    		JavaChatMessage inMessage = server.readMessage();	// read reply from server
-//	    		System.out.println("got reply :\n" + inMessage); // print reply message
-//	    		replies.add(inMessage);
-//	    		try {
-//	    			Thread.sleep(100);
-//	    		} catch (InterruptedException e) {
-//	    			// sleep interrupted, this is OK
-//	    		}
-//	    	}
-//	    	System.out.println("");
-//	    	
-//	    	// now handle the messages
-//	    	for (JavaChatMessage inMessage : replies) {
-//	    		handleReply(inMessage);
-//	    	}
-//	    	
-//		} catch (IOException e) {
-//            System.err.println("Couldn't get I/O for the connection");
-//                System.exit(1);
-//        }
-//	}
 	
 	public void handleReply(JavaChatMessage inMessage) {
 		int type = inMessage.getMessageType();
