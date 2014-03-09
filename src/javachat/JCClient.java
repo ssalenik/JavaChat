@@ -3,12 +3,15 @@ package javachat;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Insets;
 import java.awt.event.*;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.StyledDocument;
 
 import javachat.Commands;
 
@@ -25,7 +28,8 @@ public class JCClient extends JFrame {
 	private final int WIDTH = 600;
 	private final int HEIGHT = 600;
 	
-	private static JTextArea msg;
+	private static JTextPane msg;
+	private static StyledDocument msgDocument;
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
@@ -44,18 +48,21 @@ public class JCClient extends JFrame {
         chatPanel.setBorder(new EmptyBorder(5, 5, 5, 5) );
         
         // Main text area (read-only)
-        msg = new JTextArea(); 
+        msg = new JTextPane(); 
         msg.setEditable(false);
         msg.setFont(new Font("Arial", Font.BOLD, 12));
         msg.setForeground(Color.BLACK);
+        msg.setMargin(new Insets(10, 5, 20, 5));
         JScrollPane sp = new JScrollPane(msg);
         sp.setPreferredSize(new Dimension(WIDTH,570));        
-        chatPanel.add(sp);     
+        chatPanel.add(sp);
+        msgDocument = msg.getStyledDocument();
         
         // User input text area
         input = new JTextArea();
         input.setFont(new Font("Arial", Font.BOLD, 16));
         input.getDocument().putProperty("filterNewlines", Boolean.TRUE); //enforce 1 single line of text
+        input.setMargin(new Insets(5, 5, 5, 5));
         
         input.addFocusListener(new FocusListener() {        	
         	@Override
@@ -278,7 +285,17 @@ public class JCClient extends JFrame {
 	}	
 
 	public void writeToScreen(String str) {
-		msg.append(str + "\n");
+		try {
+			int offset = msgDocument.getEndPosition().getOffset();
+			msgDocument.insertString(offset, "\n" + str, null);
+			
+			// now scroll to the end
+			int end = msgDocument.getLength();
+			msg.scrollRectToVisible(msg.modelToView(end));
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 	
 	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
