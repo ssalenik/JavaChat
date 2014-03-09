@@ -1,6 +1,7 @@
 package javachat;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CommLoop implements Runnable {
@@ -35,6 +36,7 @@ public class CommLoop implements Runnable {
 			// now send message to server
 			JavaChatMessage outMessage = this.sendQueue.poll();
 			try {
+				System.out.println("sending message :\n" + outMessage);
 				server.sendMessage(outMessage);
 				
 				/* 
@@ -42,17 +44,23 @@ public class CommLoop implements Runnable {
 		    	 * and no more are available or the socket times out.
 		    	 * Store replies in the order they are received.
 		    	 */
-				while ( server.messageAvailable() || this.receivedQueue.isEmpty() ) {
+				LinkedList<JavaChatMessage> currentMessageReplies = new LinkedList<JavaChatMessage>();
+				while ( server.messageAvailable() || currentMessageReplies.isEmpty() ) {
 					// read reply from server
 					JavaChatMessage inMessage = server.readMessage();	
 					System.out.println("got reply :\n" + inMessage);
-					this.receivedQueue.add(inMessage);
+					currentMessageReplies.add(inMessage);
 					try {
 						// sleep to wait for messages
 						Thread.sleep(100);
 					} catch (InterruptedException e) {
 						// sleep interrupted, this is OK
 					}
+				}
+				
+				// now put all received replies into received queue
+				for( JavaChatMessage inMessage : currentMessageReplies) {
+					this.receivedQueue.add(inMessage);
 				}
 			} catch (IOException e1) {
 				

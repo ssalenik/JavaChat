@@ -6,7 +6,6 @@ import java.awt.Font;
 import java.awt.event.*;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.LinkedList;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -15,8 +14,10 @@ import javachat.Commands;
 
 public class JCClient extends JFrame {
 	
-	private static ServerCommunication server;
-	private static JCMFactory jcmf;
+	private ServerCommunication server;
+	private JCMFactory jcmf;
+	private Thread commThread;
+	private CommLoop commLoop;
 	String hostName = "dsp2014.ece.mcgill.ca";
     int portNumber = 5000;
 
@@ -27,6 +28,7 @@ public class JCClient extends JFrame {
 	private static JTextArea msg;
 	private static JTextArea input;
 	private static Timer queryTimer;
+	private static Timer replyTimer;
 
 	public JCClient() {
 		
@@ -93,15 +95,6 @@ public class JCClient extends JFrame {
 				                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         input.setPreferredSize(new Dimension(WIDTH,28));
         chatPanel.add(sp2); 
-        
-        //Timer to query server
-        ActionListener timerListener = new ActionListener() {
-        	@Override
-        	public void actionPerformed(ActionEvent evt) {
-        		sendMessage( jcmf.queryMessages() );
-        	}
-        };
-        queryTimer = new Timer(1000, timerListener);
 
         setTitle("JavaChat");
         setSize(WIDTH, HEIGHT);
@@ -122,9 +115,56 @@ public class JCClient extends JFrame {
                 hostName);
             System.exit(1);
         }
+    	commLoop = new CommLoop(server);
+    	commThread = new Thread(commLoop);
+    	commThread.start();
+    	
+    	//Timer to query server
+        ActionListener timerListener = new ActionListener() {
+        	@Override
+        	public void actionPerformed(ActionEvent evt) {
+        		commLoop.sendMessage( jcmf.queryMessages() );
+        	}
+        };
+        queryTimer = new Timer(1000, timerListener);
+        
+        // Timer to get replies from server
+        ActionListener replyListener = new ActionListener() {
+        	@Override
+        	public void actionPerformed(ActionEvent evt) {
+        		// get all available replies from the server
+        		while(commLoop.replyAvailabe()) {
+        			handleReply(commLoop.getReply());
+        		}
+        	}
+        };
+        replyTimer = new Timer(10, replyListener); // poll at 100Hz
+        replyTimer.start();
     }
     
-	public static void parseUserInput(String input) {
+    public final void exitClient() {
+    	// first stop server comm thread
+    	commLoop.stop();
+    	try {
+			commThread.join();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    	// now close the sockets
+    	try {
+			server.closeSocket();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    	// finally exit
+    	System.exit(0);
+    }
+    
+	public void parseUserInput(String input) {
 		String cmd = input;
 		String arg = "";
 		if(input.contains(" ")){
@@ -143,8 +183,8 @@ public class JCClient extends JFrame {
 				writeToScreen("> Error: No arguments required for \'EXIT\' command");
 				return;
 			}
-			sendMessage( jcmf.exit() );
-			System.exit(1);
+			commLoop.sendMessage( jcmf.exit() );
+			exitClient();
 		}
 		
 		else if ( command.equals(Commands.ECHO.getText()) ) {
@@ -152,7 +192,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Usage: ECHO [message] ");
 				return;
 			}
-			sendMessage( jcmf.echo(args[0]) );
+			commLoop.sendMessage( jcmf.echo(args[0]) );
 		}
 
 		else if ( command.equals(Commands.LOGIN.getText()) ) {
@@ -160,7 +200,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Usage: LOGIN [username] [password] ");
 				return;
 			}
-			sendMessage( jcmf.login(args[0], args[1]) );
+			commLoop.sendMessage( jcmf.login(args[0], args[1]) );
 		}
 		
 		else if ( command.equals(Commands.LOGOFF.getText()) ) {
@@ -168,7 +208,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Error: No arguments required for \'LOGOFF\' command");
 				return;
 			}
-			sendMessage( jcmf.logoff() );
+			commLoop.sendMessage( jcmf.logoff() );
 		}
 		
 		else if ( command.equals(Commands.CREATE_USER.getText()) ) {
@@ -176,7 +216,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Usage: ADD [username] [password] ");
 				return;
 			}
-			sendMessage( jcmf.createUser(args[0], args[1]) );
+			commLoop.sendMessage( jcmf.createUser(args[0], args[1]) );
 		}
 		
 		else if ( command.equals(Commands.DELETE_USER.getText()) ) {
@@ -184,7 +224,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Error: No arguments required for \'DEL\' command");
 				return;
 			}
-			sendMessage( jcmf.deleteUser() );
+			commLoop.sendMessage( jcmf.deleteUser() );
 		}
 		
 		else if ( command.equals(Commands.CREATE_STORE.getText()) ) {
@@ -192,7 +232,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Error: No arguments required for \'STORE\' command");
 				return;
 			}
-			sendMessage( jcmf.createStore() );
+			commLoop.sendMessage( jcmf.createStore() );
 		}
 		
 		else if ( command.equals(Commands.SEND_MSG.getText()) ) {
@@ -207,7 +247,7 @@ public class JCClient extends JFrame {
 			String message = b.toString();
 			System.out.println(message);
 			
-			sendMessage( jcmf.sendMessageToUser(args[0], message) );
+			commLoop.sendMessage( jcmf.sendMessageToUser(args[0], message) );
 		}
 		
 		else if ( command.equals(Commands.QUERY_MSG.getText()) ) {
@@ -215,7 +255,7 @@ public class JCClient extends JFrame {
 				writeToScreen("> Error: No arguments required for \'QUERY\' command");
 				return;
 			}
-			sendMessage( jcmf.queryMessages() );
+			commLoop.sendMessage( jcmf.queryMessages() );
 		}
 		
 		else if ( command.equals(Commands.HELP.getText()) ) {
@@ -237,45 +277,45 @@ public class JCClient extends JFrame {
 		}
 	}	
 
-	public static void writeToScreen(String str) {
+	public void writeToScreen(String str) {
 		msg.append(str + "\n");
 	}
 	
 	// Sends a message to the server. Prints both the sent message and the reply(s) from the server.
-	public static void sendMessage(JavaChatMessage outMessage) {		
-		try {      	
-	    	System.out.println("sending message :\n" + outMessage);
-	    	server.sendMessage(outMessage);	  //send message to server 
-	    		    	
-	    	/* 
-	    	 * Loop until at least one message is received and no more are available or the socket times out
-	    	 * Store replies in the order they are received.
-	    	 */
-	    	LinkedList<JavaChatMessage> replies = new LinkedList<JavaChatMessage>();
-	    	while ( server.messageAvailable() || replies.isEmpty() ) {
-	    		JavaChatMessage inMessage = server.readMessage();	// read reply from server
-	    		System.out.println("got reply :\n" + inMessage); // print reply message
-	    		replies.add(inMessage);
-	    		try {
-	    			Thread.sleep(100);
-	    		} catch (InterruptedException e) {
-	    			// sleep interrupted, this is OK
-	    		}
-	    	}
-	    	System.out.println("");
-	    	
-	    	// now handle the messages
-	    	for (JavaChatMessage inMessage : replies) {
-	    		handleReply(inMessage);
-	    	}
-	    	
-		} catch (IOException e) {
-            System.err.println("Couldn't get I/O for the connection");
-                System.exit(1);
-        }
-	}
+//	public void sendMessage(JavaChatMessage outMessage) {		
+//		try {      	
+//	    	System.out.println("sending message :\n" + outMessage);
+//	    	server.sendMessage(outMessage);	  //send message to server 
+//	    		    	
+//	    	/* 
+//	    	 * Loop until at least one message is received and no more are available or the socket times out
+//	    	 * Store replies in the order they are received.
+//	    	 */
+//	    	LinkedList<JavaChatMessage> replies = new LinkedList<JavaChatMessage>();
+//	    	while ( server.messageAvailable() || replies.isEmpty() ) {
+//	    		JavaChatMessage inMessage = server.readMessage();	// read reply from server
+//	    		System.out.println("got reply :\n" + inMessage); // print reply message
+//	    		replies.add(inMessage);
+//	    		try {
+//	    			Thread.sleep(100);
+//	    		} catch (InterruptedException e) {
+//	    			// sleep interrupted, this is OK
+//	    		}
+//	    	}
+//	    	System.out.println("");
+//	    	
+//	    	// now handle the messages
+//	    	for (JavaChatMessage inMessage : replies) {
+//	    		handleReply(inMessage);
+//	    	}
+//	    	
+//		} catch (IOException e) {
+//            System.err.println("Couldn't get I/O for the connection");
+//                System.exit(1);
+//        }
+//	}
 	
-	public static void handleReply(JavaChatMessage inMessage) {
+	public void handleReply(JavaChatMessage inMessage) {
 		int type = inMessage.getMessageType();
 		int subType = inMessage.getSubMessageType();
 		
@@ -284,9 +324,17 @@ public class JCClient extends JFrame {
 			queryTimer.start();
 		}
 		
-		// stop query timer on logoff
-		else if (type == Commands.LOGOFF.getId()) {
-			queryTimer.stop();
+		else if (type == Commands.QUERY_MSG.getId()) {
+			// stop query timer if we get a 'Must login first' message
+			if(inMessage.getMessageData().equals("Must login first")
+					&& queryTimer.isRunning()) 
+			{
+				queryTimer.stop();
+				return;
+			// ignore if we get a 'No messages available" message
+			} else if( inMessage.getMessageData().equals("No messages available") ){
+				return;
+			}
 		}
 		
 		// if query returns nothing, don't print
