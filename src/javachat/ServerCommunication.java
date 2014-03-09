@@ -46,6 +46,10 @@ public class ServerCommunication {
 		this.outStream.write(message.messageBytes);
 	}
 	
+	public boolean isConnected() {
+		return this.socket.isConnected();
+	}
+	
 	/* 
 	 * Tries to read the input stream. If the read operation times out, returns a 
 	 * special JavaChatMessage of type -1 
