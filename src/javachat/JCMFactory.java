@@ -1,7 +1,6 @@
 package javachat;
 
-import javachat.JavaChatMessage;
-import javachat.Commands;
+import javachat.*;
 
 public class JCMFactory {
 	
@@ -28,6 +27,8 @@ public class JCMFactory {
 	 * for each user. Not very good practice IMO... 
 	 */
 	public JCMFactory() {}
+	
+	//TODO update function signatures to take 'User' objects instead of user/pass Strings
 	
 	public JavaChatMessage exit() {
 		return new JavaChatMessage( Commands.EXIT.getId(), " " );

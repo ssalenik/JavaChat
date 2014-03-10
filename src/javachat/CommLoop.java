@@ -77,7 +77,7 @@ public class CommLoop implements Runnable {
 		}
 	}
 
-	public boolean replyAvailabe() {
+	public boolean replyAvailable() {
 		return !receivedQueue.isEmpty();
 	}
 

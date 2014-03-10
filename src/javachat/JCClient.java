@@ -11,9 +11,10 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.html.HTMLEditorKit;
 
 import utils.WrappingHTMLEditorKit;
-import javachat.Commands;
+import javachat.*;
 
 public class JCClient extends JFrame {
 	
@@ -21,6 +22,8 @@ public class JCClient extends JFrame {
 	private JCMFactory jcmf;
 	private Thread commThread;
 	private CommLoop commLoop;
+	private User currentUser;
+	
 	String hostName = "dsp2014.ece.mcgill.ca";
     int portNumber = 5000;
 
@@ -121,8 +124,7 @@ public class JCClient extends JFrame {
     
     public final void initClient() {
     	try {
-	    	server = new ServerCommunication(hostName, portNumber);        	
-	    	jcmf = new JCMFactory();
+	    	server = new ServerCommunication(hostName, portNumber);   
 	    	
     	} catch (UnknownHostException e) {
             System.err.println("Don't know about host " + hostName);
@@ -131,7 +133,9 @@ public class JCClient extends JFrame {
             System.err.println("Couldn't get I/O for the connection to " +
                 hostName);
             System.exit(1);
-        }
+        }     	
+    	jcmf = new JCMFactory();
+    	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
     	commThread = new Thread(commLoop);
     	commThread.start();
@@ -150,7 +154,7 @@ public class JCClient extends JFrame {
         	@Override
         	public void actionPerformed(ActionEvent evt) {
         		// get all available replies from the server
-        		while(commLoop.replyAvailabe()) {
+        		while(commLoop.replyAvailable()) {
         			handleReply(commLoop.getReply());
         		}
         	}
@@ -193,12 +197,26 @@ public class JCClient extends JFrame {
 		
 		// split the argument into tokens
 		// at most 2, since there are at most 2 arguments
-		String[] args = arg.trim().split(" ", 2);
+		String[] arg_tokens = arg.trim().split(" ", 2);
 		
 		// make the commands case-insensitive
 		String command = cmd.toLowerCase();	
 		
-		if ( command.equals(Commands.EXIT.getText()) ) {
+		if ( command.charAt(0) == '@' ) {
+			// message command
+			String username = command.substring(1); //strip the '@'
+			if (arg_tokens.length < 1) {
+				// write entered command to screen
+				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+				writeErrorToScreen("> Usage: @[username] [message] ");
+				return;
+			}
+			writeOutMessageToScreen(command, arg_tokens[0]);
+			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg_tokens[0]) );
+			
+		}
+		
+		else if ( command.equals(Commands.EXIT.getText()) ) {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
@@ -216,17 +234,18 @@ public class JCClient extends JFrame {
 				writeErrorToScreen("> Usage: ECHO [message] ");
 				return;
 			}
-			commLoop.sendMessage( jcmf.echo(args[0]) );
+			commLoop.sendMessage( jcmf.echo(arg_tokens[0]) );
 		}
 
 		else if ( command.equals(Commands.LOGIN.getText()) ) {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
-			if (args.length != 2) { 
+			if (arg_tokens.length != 2) { 
 				writeErrorToScreen("> Usage: LOGIN [username] [password] ");
 				return;
 			}
-			commLoop.sendMessage( jcmf.login(args[0], args[1]) );
+			currentUser.setUser(arg_tokens[0], arg_tokens[1]); // set the current user's info
+			commLoop.sendMessage( jcmf.login(arg_tokens[0], arg_tokens[1]) );
 		}
 		
 		else if ( command.equals(Commands.LOGOFF.getText()) ) {
@@ -242,11 +261,13 @@ public class JCClient extends JFrame {
 		else if ( command.equals(Commands.CREATE_USER.getText()) ) {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
-			if (args.length != 2) { 
+			if (arg_tokens.length != 2) { 
 				writeErrorToScreen("> Usage: ADD [username] [password] ");
 				return;
 			}
-			commLoop.sendMessage( jcmf.createUser(args[0], args[1]) );
+
+			currentUser.setUser(arg_tokens[0], arg_tokens[1]); // set the current user's info
+			commLoop.sendMessage( jcmf.createUser(arg_tokens[0], arg_tokens[1]) );
 		}
 		
 		else if ( command.equals(Commands.DELETE_USER.getText()) ) {
@@ -270,15 +291,15 @@ public class JCClient extends JFrame {
 		}
 		
 		else if ( command.equals(Commands.SEND_MSG.getText()) ) {
-			if (args.length < 2) {
+			// old command to send message
+			if (arg_tokens.length < 2) {
 				// write entered command to screen
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 				writeErrorToScreen("> Usage: MSG [username] [message] ");
 				return;
 			}
-//			System.out.println(args[1]);
-			writeOutMessageToScreen(cmd, args[0], args[1]);
-			commLoop.sendMessage( jcmf.sendMessageToUser(args[0], args[1]) );
+			writeOutMessageToScreen(command, arg_tokens[1]);
+			commLoop.sendMessage( jcmf.sendMessageToUser(arg_tokens[0], arg_tokens[1]) );
 		}
 		
 		else if ( command.equals(Commands.QUERY_MSG.getText()) ) {
@@ -368,11 +389,10 @@ public class JCClient extends JFrame {
 	 * Formats sent message and writes to output
 	 * @param str
 	 */
-	public void writeOutMessageToScreen(String cmd, String user, String message) {
+	public void writeOutMessageToScreen(String user, String message) {
 		// write in format of message to screen
 		writeLineToScreen(makeBold(
-				sanitize(cmd)
-				+ " " + makeBlue(sanitize(user)) 
+				makeBlue(sanitize(user)) 
 				+ "<br>" + makeGreen(sanitize(message))
 				));
 	}
@@ -417,7 +437,6 @@ public class JCClient extends JFrame {
 			try {
 				msgKit.insertHTML(msgDocument, offset + 1, str, 0, 0, null);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
@@ -425,30 +444,69 @@ public class JCClient extends JFrame {
 			int end = msgDocument.getLength();
 			msg.scrollRectToVisible(msg.modelToView(end));
 		} catch (BadLocationException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 	
+	public void setUpUserAccount(User user) {
+		commLoop.sendMessage( jcmf.login(user.getUsername(), user.getPassword()) );
+		commLoop.sendMessage( jcmf.createStore() );
+	}	
+	
 	public void handleReply(JavaChatMessage inMessage) {
+		
+		
 		int type = inMessage.getMessageType();
 		int subType = inMessage.getSubMessageType();
+				
+
+		/* 
+		 * maybe this stuff below could be broken up into separate functions for a cleaner look?
+		 *  i.e. handleLogin(), handleLogoff(), etc.? 
+		 */
 		
-		// login successful, start query timer
-		if (type == Commands.LOGIN.getId() && subType == 0) {
-			queryTimer.start();
+		// handle login
+		if (type == Commands.LOGIN.getId()) {
+			if (subType == 0) {
+				queryTimer.start(); // successful login, start query timer
+			} else {
+				currentUser.setUser(null, null); // failed login, reset current user info
+			}
 		}
 		
-		if (type == Commands.QUERY_MSG.getId()) {
+		// handle logoff
+		else if (type == Commands.LOGOFF.getId()) {
+			currentUser.setUser(null, null); // reset current user info on successful logoff
+			queryTimer.stop();	// stop query timer on logoff
+		}
+		
+		// handle account creation
+		else if (type == Commands.CREATE_USER.getId()) {
+			if (subType == 0) {
+				setUpUserAccount(currentUser);
+			} else {
+				currentUser.setUser(null, null); // failed account creation, reset current user info
+			}
+		}
+		
+		else if (type == Commands.SEND_MSG.getId()) {
+			if (subType == 0) {
+				return;	// return: don't print reply from server
+			}
+		}
+		
+		// handle server queries
+		else if (type == Commands.QUERY_MSG.getId()) {
 			// stop query timer if we get a 'Must login first' message
 			if(inMessage.getMessageData().equals("Must login first")
 					&& queryTimer.isRunning()) 
 			{
 				queryTimer.stop();
-				return;
+				return;	// return: don't print reply from server
+				
 			// ignore if we get a 'No messages available" message
 			} else if( inMessage.getMessageData().equals("No messages available") ){
-				return;
+				return;	// return: don't print reply from server
 				
 			// print if message from user
 			} else if (subType == 1) {
@@ -462,17 +520,23 @@ public class JCClient extends JFrame {
 					// simply write the message data
 					writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
 				}
+				return; // return: don't print reply from server
 			}
 		}
 		
-		// if query returns nothing, don't print
-		else if (type == Commands.QUERY_MSG.getId() && subType == 0) {
+		if (subType != 0 || type == Commands.BADLY_FORMATTED_MSG.getId()) {
+			// A message other than "Success" was returned by the server 
+			// This case applies to all messages EXCEPT query, where subType=1 means "there are messages"
+			writeErrorToScreen("> " + sanitize(inMessage.getMessageData()));
 			return;
-		} else {
-			// print received message data
+		}
+		
+		else if (subType == 0) {
 			writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
+			return;
 		}
 	}
+
 
     public static void main(String[] args) {
 
