@@ -203,13 +203,11 @@ public class JCClient extends JFrame {
 		if ( command.charAt(0) == '@' ) {
 			// message command
 			String username = command.substring(1); //strip the '@'
-			/* this is useless, will never happen
-			 * if (arg_tokens.length < 1) {
-				// this should never execute
+			if (arg.equals("")) {
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 				writeErrorToScreen(sanitize("> Usage: @[username] [message] "));
 				return;
-			}*/
+			}
 			writeOutMessageToScreen(command, arg);
 			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
 			
@@ -473,7 +471,6 @@ public class JCClient extends JFrame {
 		// handle logoff
 		else if (type == Commands.LOGOFF.getId()) {
 			currentUser.setUser(null, null); // reset current user info on successful logoff
-			queryTimer.stop();	// stop query timer on logoff
 		}
 		
 		// handle account creation
