@@ -1,6 +1,5 @@
 package javachat;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
@@ -11,7 +10,8 @@ import java.net.UnknownHostException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
-import javax.swing.text.StyledDocument;
+import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.html.HTMLEditorKit;
 
 import javachat.Commands;
 
@@ -29,13 +29,14 @@ public class JCClient extends JFrame {
 	private final int HEIGHT = 600;
 	
 	private static JTextPane msg;
-	private static StyledDocument msgDocument;
+	private static HTMLDocument msgDocument;
+	private static HTMLEditorKit msgKit;
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
 	
 	/* this is used to make sure there is some white space at the bottom
-	 * of the output text pane for lgibility
+	 * of the output text pane for legibility
 	 */
 	public static final String WHITE_SPACE_PADDING = "\n\n\n\n\n\n\n";
 
@@ -55,13 +56,18 @@ public class JCClient extends JFrame {
         // Main text area (read-only)
         msg = new JTextPane(); 
         msg.setEditable(false);
-        msg.setFont(new Font("Arial", Font.BOLD, 12));
-        msg.setForeground(Color.BLACK);
+//        msg.setFont(new Font("Arial", Font.BOLD, 12));
+//        msg.setForeground(Color.BLACK);
         msg.setMargin(new Insets(10, 5, 0, 5));
         JScrollPane sp = new JScrollPane(msg);
         sp.setPreferredSize(new Dimension(WIDTH,570));        
         chatPanel.add(sp);
-        msgDocument = msg.getStyledDocument();
+        
+        // text area HTML doc
+        msgKit = new HTMLEditorKit();
+        msgDocument = new HTMLDocument();
+        msg.setEditorKit(msgKit);
+        msg.setDocument(msgDocument);
         
         // User input text area
         input = new JTextArea();
@@ -183,7 +189,7 @@ public class JCClient extends JFrame {
 			cmd = input.substring(0, input.indexOf(" ")); 	//extract the command from the user input
 			arg = input.substring(input.indexOf(" "), input.length());
 		}		
-		writeToScreen("\n" + cmd + " " + arg);
+		writeLineToScreen("<br>" + sanitize(cmd) + " " + sanitize(arg));
 		
 		String[] args = arg.trim().split(" "); // split the argument into tokens
 		
@@ -192,7 +198,7 @@ public class JCClient extends JFrame {
 		
 		if ( command.equals(Commands.EXIT.getText()) ) {
 			if (arg != "") { 
-				writeToScreen("> Error: No arguments required for \'EXIT\' command");
+				writeLineToScreen("> Error: No arguments required for \'EXIT\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.exit() );
@@ -201,7 +207,7 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.ECHO.getText()) ) {
 			if (arg == "") { 
-				writeToScreen("> Usage: ECHO [message] ");
+				writeLineToScreen("> Usage: ECHO [message] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.echo(args[0]) );
@@ -209,7 +215,7 @@ public class JCClient extends JFrame {
 
 		else if ( command.equals(Commands.LOGIN.getText()) ) {
 			if (args.length != 2) { 
-				writeToScreen("> Usage: LOGIN [username] [password] ");
+				writeLineToScreen("> Usage: LOGIN [username] [password] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.login(args[0], args[1]) );
@@ -217,7 +223,7 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.LOGOFF.getText()) ) {
 			if (arg != "") { 
-				writeToScreen("> Error: No arguments required for \'LOGOFF\' command");
+				writeLineToScreen("> Error: No arguments required for \'LOGOFF\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.logoff() );
@@ -225,7 +231,7 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.CREATE_USER.getText()) ) {
 			if (args.length != 2) { 
-				writeToScreen("> Usage: ADD [username] [password] ");
+				writeLineToScreen("> Usage: ADD [username] [password] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.createUser(args[0], args[1]) );
@@ -233,7 +239,7 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.DELETE_USER.getText()) ) {
 			if (arg != "") { 
-				writeToScreen("> Error: No arguments required for \'DEL\' command");
+				writeLineToScreen("> Error: No arguments required for \'DEL\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.deleteUser() );
@@ -241,7 +247,7 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.CREATE_STORE.getText()) ) {
 			if (arg != "") { 
-				writeToScreen("> Error: No arguments required for \'STORE\' command");
+				writeLineToScreen("> Error: No arguments required for \'STORE\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.createStore() );
@@ -264,30 +270,68 @@ public class JCClient extends JFrame {
 		
 		else if ( command.equals(Commands.QUERY_MSG.getText()) ) {
 			if (arg != "") { 
-				writeToScreen("> Error: No arguments required for \'QUERY\' command");
+				writeLineToScreen("> Error: No arguments required for \'QUERY\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.queryMessages() );
 		}
 		
 		else if ( command.equals(Commands.HELP.getText()) ) {
-			writeToScreen("\nAVAILABLE COMMANDS\n" +
-					Commands.EXIT.getText() + " : disconnect from the server and exit the program\n" +
-					Commands.ECHO.getText() + " [msg] : sends a message to the server, which echoes it back\n" +
-					Commands.LOGIN.getText() + " [username] [password] : logs in to the server with the username and password provided\n" +
-					Commands.LOGOFF.getText() + " : logs the current user out\n" +
-					Commands.CREATE_USER.getText() + " [username] [password] : creates a new user with the username and password provided\n" +
-					Commands.DELETE_USER.getText() + " : deletes the account of the current user\n" +
-					Commands.CREATE_STORE.getText() + " : creates a message store for the current user (do this only once per account)\n" +
-					Commands.SEND_MSG.getText() + " [recipient] [msg] : sends a message to the given recipient\n" +
-					Commands.QUERY_MSG.getText() + " : manually query the server for messages\n" 
-					);
+			writeLineToScreen("<br>AVAILABLE COMMANDS");
+			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
+			writeLineToScreen(makeBold(Commands.ECHO.getText() + " : ") + "sends a message to the server, which echoes it back" );
+			writeLineToScreen(makeBold(Commands.LOGIN.getText() + " [username] [password] : ") + "logs in to the server with the username and password provided" );
+			writeLineToScreen(makeBold(Commands.LOGOFF.getText() + " : ") + "logs the current user out" );
+			writeLineToScreen(makeBold(Commands.CREATE_USER.getText() + " [username] [password] : ") + "creates a new user with the username and password provided" );
+			writeLineToScreen(makeBold(Commands.DELETE_USER.getText() + " : ") + "deletes the account of the current user" );
+			writeLineToScreen(makeBold(Commands.CREATE_STORE.getText() + " : ") + "creates a message store for the current user (do this only once per account)" );
+			writeLineToScreen(makeBold(Commands.SEND_MSG.getText() + " [recipient] [msg] : ") + "sends a message to the given recipient" );
+			writeLineToScreen(makeBold(Commands.QUERY_MSG.getText() + " : ") + "query the server for messages" );
 		}
 		
 		else {
-			writeToScreen("> Error: Unknown command \'" + cmd + "\'");
+			writeLineToScreen("> Error: Unknown command \'" + cmd + "\'");
 		}
-	}	
+	}
+	
+	/**
+	 * Escape HTML chars in the string
+	 * @param str
+	 * @return
+	 */
+	public static String sanitize(String str) {
+		str = str.replace("&", "&amp;");
+		str = str.replace("<", "&lt;");
+		str = str.replace(">", "&gt;");
+		str = str.replace("\"", "&quot;");
+		str = str.replace("'", "&#39;");
+		
+		return str;
+	}
+	public static String makeBold(String str) {
+		return "<b>" + str + "</b>";
+	}
+	public static String makeRed(String str) {
+		return makeColor(str, "red");
+	}
+	public static String makeBlue(String str) {
+		return makeColor(str, "blue");
+	}
+	public static String makeGreen(String str) {
+		return makeColor(str, "green");
+	}
+	public static String makeColor(String str, String HTMLColor) {
+		return "<font color=\"" + HTMLColor + "\">" + str + "</font>";
+	}
+	
+	/**
+	 * Writes the input string plus a new line to the output TextPane
+	 * 
+	 * @param str
+	 */
+	public void writeLineToScreen(String str) {
+		writeToScreen(str + "<br>");
+	}
 
 	/**
 	 * Writes to the end of the output TextPane.
@@ -314,7 +358,13 @@ public class JCClient extends JFrame {
 				msgDocument.insertString(offset, WHITE_SPACE_PADDING, null);
 			}
 			
-			msgDocument.insertString(offset, "\n" + str, null);
+//			msgDocument.insertString(offset, "\n", null);
+			try {
+				msgKit.insertHTML(msgDocument, offset + 1, str, 0, 0, null);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			
 			// now scroll to the end
 			int end = msgDocument.getLength();
@@ -352,7 +402,7 @@ public class JCClient extends JFrame {
 			return;
 		}
 		
-		writeToScreen("> " + inMessage.getMessageData());
+		writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
 	}
 
     public static void main(String[] args) {
