@@ -208,7 +208,7 @@ public class JCClient extends JFrame {
 			if (arg_tokens.length < 1) {
 				// write entered command to screen
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
-				writeErrorToScreen("> Usage: @[username] [message] ");
+				writeErrorToScreen(sanitize("> Usage: @[username] [message] "));
 				return;
 			}
 			writeOutMessageToScreen(command, arg_tokens[0]);
@@ -220,7 +220,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeErrorToScreen("> Error: No arguments required for \'EXIT\' command");
+				writeErrorToScreen(sanitize("> Error: No arguments required for \'EXIT\' command"));
 				return;
 			}
 			commLoop.sendMessage( jcmf.exit() );
@@ -231,7 +231,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg == "") { 
-				writeErrorToScreen("> Usage: ECHO [message] ");
+				writeErrorToScreen(sanitize("> Usage: ECHO [message] "));
 				return;
 			}
 			commLoop.sendMessage( jcmf.echo(arg_tokens[0]) );
@@ -241,7 +241,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg_tokens.length != 2) { 
-				writeErrorToScreen("> Usage: LOGIN [username] [password] ");
+				writeErrorToScreen(sanitize("> Usage: LOGIN [username] [password] "));
 				return;
 			}
 			currentUser.setUser(arg_tokens[0], arg_tokens[1]); // set the current user's info
@@ -252,7 +252,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeErrorToScreen("> Error: No arguments required for \'LOGOFF\' command");
+				writeErrorToScreen(sanitize("> Error: No arguments required for \'LOGOFF\' command"));
 				return;
 			}
 			commLoop.sendMessage( jcmf.logoff() );
@@ -262,7 +262,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg_tokens.length != 2) { 
-				writeErrorToScreen("> Usage: ADD [username] [password] ");
+				writeErrorToScreen(sanitize("> Usage: ADD [username] [password] "));
 				return;
 			}
 
@@ -274,7 +274,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeErrorToScreen("> Error: No arguments required for \'DEL\' command");
+				writeErrorToScreen(sanitize("> Error: No arguments required for \'DEL\' command"));
 				return;
 			}
 			commLoop.sendMessage( jcmf.deleteUser() );
@@ -284,7 +284,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeErrorToScreen("> Error: No arguments required for \'STORE\' command");
+				writeErrorToScreen(sanitize("> Error: No arguments required for \'STORE\' command"));
 				return;
 			}
 			commLoop.sendMessage( jcmf.createStore() );
@@ -295,7 +295,7 @@ public class JCClient extends JFrame {
 			if (arg_tokens.length < 2) {
 				// write entered command to screen
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
-				writeErrorToScreen("> Usage: MSG [username] [message] ");
+				writeErrorToScreen(sanitize("> Usage: MSG [username] [message] "));
 				return;
 			}
 			writeOutMessageToScreen(command, arg_tokens[1]);
@@ -306,7 +306,7 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeErrorToScreen("> Error: No arguments required for \'QUERY\' command");
+				writeErrorToScreen(sanitize("> Error: No arguments required for \'QUERY\' command"));
 				return;
 			}
 			commLoop.sendMessage( jcmf.queryMessages() );
@@ -518,7 +518,7 @@ public class JCClient extends JFrame {
 				} else {
 					// not expected
 					// simply write the message data
-					writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
+					writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
 				}
 				return; // return: don't print reply from server
 			}
@@ -527,12 +527,12 @@ public class JCClient extends JFrame {
 		if (subType != 0 || type == Commands.BADLY_FORMATTED_MSG.getId()) {
 			// A message other than "Success" was returned by the server 
 			// This case applies to all messages EXCEPT query, where subType=1 means "there are messages"
-			writeErrorToScreen("> " + sanitize(inMessage.getMessageData()));
+			writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
 			return;
 		}
 		
 		else if (subType == 0) {
-			writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
+			writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
 			return;
 		}
 	}
