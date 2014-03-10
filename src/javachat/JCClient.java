@@ -169,7 +169,6 @@ public class JCClient extends JFrame {
     	try {
 			commThread.join();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
     	
@@ -177,7 +176,6 @@ public class JCClient extends JFrame {
     	try {
 			server.closeSocket();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
     	
@@ -205,14 +203,15 @@ public class JCClient extends JFrame {
 		if ( command.charAt(0) == '@' ) {
 			// message command
 			String username = command.substring(1); //strip the '@'
-			if (arg_tokens.length < 1) {
-				// write entered command to screen
+			/* this is useless, will never happen
+			 * if (arg_tokens.length < 1) {
+				// this should never execute
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 				writeErrorToScreen("> Usage: @[username] [message] ");
 				return;
-			}
-			writeOutMessageToScreen(command, arg_tokens[0]);
-			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg_tokens[0]) );
+			}*/
+			writeOutMessageToScreen(command, arg);
+			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
 			
 		}
 		
@@ -460,7 +459,8 @@ public class JCClient extends JFrame {
 		int subType = inMessage.getSubMessageType();
 				
 
-		/* 
+		/*
+		 * //TODO
 		 * maybe this stuff below could be broken up into separate functions for a cleaner look?
 		 *  i.e. handleLogin(), handleLogoff(), etc.? 
 		 */
