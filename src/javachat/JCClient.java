@@ -378,11 +378,9 @@ public class JCClient extends JFrame {
 	 */
 	public void writeInMessageToScreen(String from, String time, String message) {
 		// write as received message
-		writeLineToScreen(alignRight(makeBold(
-				makeBlue(sanitize(from))
-				+ ", " + sanitize(time)
-				+ "<br>" + makeBlue(sanitize(message))
-				)));
+		writeToScreen("<div align=\"right\"><p>"
+				+ makeBold(makeBlue(sanitize(from)) + ", " + sanitize(time)) + "</p>"
+				+ makeBold(makeBlue(sanitize(message))) + "</p></div>");
 	}
 	/**
 	 * Formats sent message and writes to output
@@ -390,10 +388,8 @@ public class JCClient extends JFrame {
 	 */
 	public void writeOutMessageToScreen(String user, String message) {
 		// write in format of message to screen
-		writeLineToScreen(makeBold(
-				makeBlue(sanitize(user)) 
-				+ "<br>" + makeGreen(sanitize(message))
-				));
+		writeLineToScreen(makeBold(makeBlue(sanitize(user))));
+		writeLineToScreen(makeBold(makeGreen(sanitize(message))));
 	}
 	public void writeErrorToScreen(String str) {
 		writeToScreen(makeRed(str));
@@ -404,7 +400,7 @@ public class JCClient extends JFrame {
 	 * @param str
 	 */
 	public void writeLineToScreen(String str) {
-		writeToScreen(str + "<br>");
+		writeToScreen("<p>" + str + "</p>");
 	}
 
 	/**
