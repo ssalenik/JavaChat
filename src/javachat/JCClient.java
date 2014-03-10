@@ -189,16 +189,21 @@ public class JCClient extends JFrame {
 			cmd = input.substring(0, input.indexOf(" ")); 	//extract the command from the user input
 			arg = input.substring(input.indexOf(" "), input.length());
 		}		
-		writeLineToScreen("<br>" + sanitize(cmd) + " " + sanitize(arg));
+		writeLineToScreen("<br>");
+//		writeLineToScreen(sanitize(cmd) + " " + sanitize(arg));
 		
-		String[] args = arg.trim().split(" "); // split the argument into tokens
+		// split the argument into tokens
+		// at most 2, since there are at most 2 arguments
+		String[] args = arg.trim().split(" ", 2);
 		
 		// make the commands case-insensitive
 		String command = cmd.toLowerCase();	
 		
 		if ( command.equals(Commands.EXIT.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeLineToScreen("> Error: No arguments required for \'EXIT\' command");
+				writeErrorToScreen("> Error: No arguments required for \'EXIT\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.exit() );
@@ -206,77 +211,91 @@ public class JCClient extends JFrame {
 		}
 		
 		else if ( command.equals(Commands.ECHO.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg == "") { 
-				writeLineToScreen("> Usage: ECHO [message] ");
+				writeErrorToScreen("> Usage: ECHO [message] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.echo(args[0]) );
 		}
 
 		else if ( command.equals(Commands.LOGIN.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (args.length != 2) { 
-				writeLineToScreen("> Usage: LOGIN [username] [password] ");
+				writeErrorToScreen("> Usage: LOGIN [username] [password] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.login(args[0], args[1]) );
 		}
 		
 		else if ( command.equals(Commands.LOGOFF.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeLineToScreen("> Error: No arguments required for \'LOGOFF\' command");
+				writeErrorToScreen("> Error: No arguments required for \'LOGOFF\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.logoff() );
 		}
 		
 		else if ( command.equals(Commands.CREATE_USER.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (args.length != 2) { 
-				writeLineToScreen("> Usage: ADD [username] [password] ");
+				writeErrorToScreen("> Usage: ADD [username] [password] ");
 				return;
 			}
 			commLoop.sendMessage( jcmf.createUser(args[0], args[1]) );
 		}
 		
 		else if ( command.equals(Commands.DELETE_USER.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeLineToScreen("> Error: No arguments required for \'DEL\' command");
+				writeErrorToScreen("> Error: No arguments required for \'DEL\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.deleteUser() );
 		}
 		
 		else if ( command.equals(Commands.CREATE_STORE.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeLineToScreen("> Error: No arguments required for \'STORE\' command");
+				writeErrorToScreen("> Error: No arguments required for \'STORE\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.createStore() );
 		}
 		
 		else if ( command.equals(Commands.SEND_MSG.getText()) ) {
-			// concatenate all the tokens from index 1 onward to form the message string
-			StringBuilder b = new StringBuilder();				
-			for (int i=1; i<args.length; i++) {
-			    if (b.length() > 0) {
-			    	b.append(" ");
-			    }
-			    b.append(args[i]);
-			}				
-			String message = b.toString();
-			System.out.println(message);
-			
-			commLoop.sendMessage( jcmf.sendMessageToUser(args[0], message) );
+			if (args.length < 2) {
+				// write entered command to screen
+				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+				writeErrorToScreen("> Usage: MSG [username] [message] ");
+				return;
+			}
+//			System.out.println(args[1]);
+			writeOutMessageToScreen(cmd, args[0], args[1]);
+			commLoop.sendMessage( jcmf.sendMessageToUser(args[0], args[1]) );
 		}
 		
 		else if ( command.equals(Commands.QUERY_MSG.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg != "") { 
-				writeLineToScreen("> Error: No arguments required for \'QUERY\' command");
+				writeErrorToScreen("> Error: No arguments required for \'QUERY\' command");
 				return;
 			}
 			commLoop.sendMessage( jcmf.queryMessages() );
 		}
 		
 		else if ( command.equals(Commands.HELP.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+			// write commands
 			writeLineToScreen("<br>AVAILABLE COMMANDS");
 			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
 			writeLineToScreen(makeBold(Commands.ECHO.getText() + " : ") + "sends a message to the server, which echoes it back" );
@@ -290,7 +309,9 @@ public class JCClient extends JFrame {
 		}
 		
 		else {
-			writeLineToScreen("> Error: Unknown command \'" + cmd + "\'");
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+			writeErrorToScreen("> Error: Unknown command \'" + cmd + "\'");
 		}
 	}
 	
@@ -308,6 +329,15 @@ public class JCClient extends JFrame {
 		
 		return str;
 	}
+	
+	/**
+	 * Surrounds input string with <div align="right"> tag
+	 * @param str
+	 * @return
+	 */
+	public static String alignRight(String str) {
+		return "<div align=\"right\">" + str + "</div>";
+	}
 	public static String makeBold(String str) {
 		return "<b>" + str + "</b>";
 	}
@@ -323,7 +353,33 @@ public class JCClient extends JFrame {
 	public static String makeColor(String str, String HTMLColor) {
 		return "<font color=\"" + HTMLColor + "\">" + str + "</font>";
 	}
-	
+	/**
+	 * Formats received message and writes to output
+	 * @param str
+	 */
+	public void writeInMessageToScreen(String from, String time, String message) {
+		// write as received message
+		writeLineToScreen(alignRight(makeBold(
+				makeBlue(sanitize(from))
+				+ ", " + sanitize(time)
+				+ "<br>" + makeBlue(sanitize(message))
+				)));
+	}
+	/**
+	 * Formats sent message and writes to output
+	 * @param str
+	 */
+	public void writeOutMessageToScreen(String cmd, String user, String message) {
+		// write in format of message to screen
+		writeLineToScreen(makeBold(
+				sanitize(cmd)
+				+ " " + makeBlue(sanitize(user)) 
+				+ "<br>" + makeGreen(sanitize(message))
+				));
+	}
+	public void writeErrorToScreen(String str) {
+		writeToScreen(makeRed(str));
+	}
 	/**
 	 * Writes the input string plus a new line to the output TextPane
 	 * 
@@ -384,7 +440,7 @@ public class JCClient extends JFrame {
 			queryTimer.start();
 		}
 		
-		else if (type == Commands.QUERY_MSG.getId()) {
+		if (type == Commands.QUERY_MSG.getId()) {
 			// stop query timer if we get a 'Must login first' message
 			if(inMessage.getMessageData().equals("Must login first")
 					&& queryTimer.isRunning()) 
@@ -394,15 +450,29 @@ public class JCClient extends JFrame {
 			// ignore if we get a 'No messages available" message
 			} else if( inMessage.getMessageData().equals("No messages available") ){
 				return;
+				
+			// print if message from user
+			} else if (subType == 1) {
+				// split message on commas, into at most 3
+				String [] messageData = inMessage.messageData.split(",", 3);
+				// make sure the message makes sense
+				if (messageData.length == 3) {
+					writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
+				} else {
+					// not expected
+					// simply write the message data
+					writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
+				}
 			}
 		}
 		
 		// if query returns nothing, don't print
 		else if (type == Commands.QUERY_MSG.getId() && subType == 0) {
 			return;
+		} else {
+			// print received message data
+			writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
 		}
-		
-		writeLineToScreen("> " + sanitize(inMessage.getMessageData()));
 	}
 
     public static void main(String[] args) {
