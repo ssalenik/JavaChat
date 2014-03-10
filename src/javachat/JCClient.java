@@ -11,8 +11,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
-import javax.swing.text.html.HTMLEditorKit;
 
+import utils.WrappingHTMLEditorKit;
 import javachat.Commands;
 
 public class JCClient extends JFrame {
@@ -30,7 +30,7 @@ public class JCClient extends JFrame {
 	
 	private static JTextPane msg;
 	private static HTMLDocument msgDocument;
-	private static HTMLEditorKit msgKit;
+	private static WrappingHTMLEditorKit msgKit;
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
@@ -56,15 +56,13 @@ public class JCClient extends JFrame {
         // Main text area (read-only)
         msg = new JTextPane(); 
         msg.setEditable(false);
-//        msg.setFont(new Font("Arial", Font.BOLD, 12));
-//        msg.setForeground(Color.BLACK);
         msg.setMargin(new Insets(10, 5, 0, 5));
         JScrollPane sp = new JScrollPane(msg);
-        sp.setPreferredSize(new Dimension(WIDTH,570));        
+        sp.setPreferredSize(new Dimension(WIDTH,570));
         chatPanel.add(sp);
         
-        // text area HTML doc
-        msgKit = new HTMLEditorKit();
+		// text area HTML doc
+		msgKit = new WrappingHTMLEditorKit();
         msgDocument = new HTMLDocument();
         msg.setEditorKit(msgKit);
         msg.setDocument(msgDocument);
@@ -74,6 +72,7 @@ public class JCClient extends JFrame {
         input.setFont(new Font("Arial", Font.BOLD, 16));
         input.getDocument().putProperty("filterNewlines", Boolean.TRUE); //enforce 1 single line of text
         input.setMargin(new Insets(5, 5, 5, 5));
+        input.setLineWrap(true);
         
         input.addFocusListener(new FocusListener() {        	
         	@Override
