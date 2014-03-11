@@ -16,17 +16,27 @@ import javachat.*;
 
 public class TestClient {	
 	
-	private ServerCommunication server;
-	private JCMFactory jcmf;
-	private CommLoop commLoop;
-	private LinkedList<JavaChatMessage> serverReplies;
+	private static ServerCommunication server;
+	private static JCMFactory jcmf;
+	private static CommLoop commLoop;
+	private LinkedList<JavaChatMessage> serverResponse;
+	private JavaChatMessage reply;
 	
-	String hostName = "dsp2014.ece.mcgill.ca";
-    int portNumber = 5000;
+	private static String hostName = "dsp2014.ece.mcgill.ca";
+    private static int portNumber = 5000;
+    private String testUser = "testuser1234";
+    private String testPass = "test";
+    private String testMsg = "this is a test message";
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		
+		try {
+	    	server = new ServerCommunication(hostName, portNumber); 	    	
+    	} catch (UnknownHostException e) {
+        } catch (IOException e) {
+        }     	
+    	jcmf = new JCMFactory();
+    	commLoop = new CommLoop(server);
 	}
 
 	@AfterClass
@@ -35,29 +45,201 @@ public class TestClient {
 
 	@Before
 	public void setUp() throws Exception {
-		try {
-	    	server = new ServerCommunication(hostName, portNumber);   
-	    	
-    	} catch (UnknownHostException e) {
-            System.err.println("Don't know about host " + hostName);
-            System.exit(1);
-        } catch (IOException e) {
-            System.err.println("Couldn't get I/O for the connection to " +
-                hostName);
-            System.exit(1);
-        }     	
-    	jcmf = new JCMFactory();
-    	commLoop = new CommLoop(server);
+		
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		//cleanup
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.deleteUser() );
 	}
-
+	
+	
 	@Test
-	public void testUserCreation() {
-		serverReplies = commLoop.sendAndReceive( jcmf.createUser("123test", "test") );
-		//
+	public void UserCreation_NormalCase() {
+		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 0);
+		
+		//cleanup
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void UserCreation_AlreadyExists() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);
+		
+		//cleanup
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void UserCreation_AlreadyLoggedIn() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
+		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 2);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void UserCreation_IllegalChars() {
+		//commLoop.sendAndReceive( jcmf.createUser(testUser + ",", testPass) );		
+		assertTrue(1 == 1); //TODO
+	}
+	
+	@Test
+	public void Login_NormalCase() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 0);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void Login_AlreadyLoggedIn() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void Login_UsernameIncorrect() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser + "1", testPass) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 2);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void Login_PasswordIncorrect() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass + "1") );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 2);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void Logoff_NormalCase() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );	
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.logoff() );	
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 0);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	
+	@Test
+	public void Logoff_NoLogin() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
+		serverResponse = commLoop.sendAndReceive( jcmf.logoff() );	
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void QueryMsg_NoMessages() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.queryMessages() );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 0);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void QueryMsg_MessagesPresent() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.createStore() );
+		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 0);
+		
+		serverResponse = commLoop.sendAndReceive( jcmf.queryMessages() );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);	// 1 = message received
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	// the server returns 2 in this case instead of 1 for some reason
+	public void SendMsg_NoUserStore() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void SendMsg_BadUsername() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser + "1", testMsg) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 2);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void SendMsg_NoLogin() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 3);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
+	}
+	
+	@Test
+	public void DeleteUser_NoLogin() {
+		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
+		serverResponse = commLoop.sendAndReceive( jcmf.deleteUser() );		
+		reply = serverResponse.getFirst();
+		assertTrue(reply.getSubMessageType() == 1);
+		
+		//cleanup		
+		commLoop.sendAndReceive( jcmf.deleteUser() );
 	}
 
 }
