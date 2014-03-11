@@ -224,6 +224,10 @@ public class JCClient extends JFrame {
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 				writeErrorToScreen(sanitize("> Usage: @[username] [message] "));
 				return;
+			} else if (username.contains(",")) {
+				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+				writeErrorToScreen(sanitize("> Usernames may not contain commas! "));
+				return;
 			}
 			writeOutMessageToScreen(command, arg);
 			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
@@ -257,6 +261,9 @@ public class JCClient extends JFrame {
 			if (arg_tokens.length != 2) { 
 				writeErrorToScreen(sanitize("> Usage: LOGIN [username] [password] "));
 				return;
+			} else if (arg_tokens[0].contains(",")) {
+				writeErrorToScreen(sanitize("> Usernames may not contain commas! "));
+				return;
 			}
 			currentUser.setUser(arg_tokens[0], arg_tokens[1]); // set the current user's info
 			commLoop.sendMessage( jcmf.login(arg_tokens[0], arg_tokens[1]) );
@@ -277,6 +284,24 @@ public class JCClient extends JFrame {
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg_tokens.length != 2) { 
 				writeErrorToScreen(sanitize("> Usage: ADD [username] [password] "));
+				return;
+			} else if (arg_tokens[0].contains(",")) {
+				writeErrorToScreen(sanitize("> Usernames may not contain commas! "));
+				return;
+			}
+
+//			currentUser.setUser(arg_tokens[0], arg_tokens[1]); // set the current user's info
+			commLoop.sendMessage( jcmf.createUser(arg_tokens[0], arg_tokens[1]) );
+		}
+		
+		else if ( command.equals(Commands.CREAT_USER_AND_STORE.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+			if (arg_tokens.length != 2) { 
+				writeErrorToScreen(sanitize("> Usage: ADD [username] [password] "));
+				return;
+			} else if (arg_tokens[0].contains(",")) {
+				writeErrorToScreen(sanitize("> Usernames may not contain commas! "));
 				return;
 			}
 
@@ -311,6 +336,9 @@ public class JCClient extends JFrame {
 				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 				writeErrorToScreen(sanitize("> Usage: MSG [username] [message] "));
 				return;
+			} else if (arg_tokens[0].contains(",")) {
+				writeErrorToScreen(sanitize("> Usernames maynot contain commas! "));
+				return;
 			}
 			writeOutMessageToScreen(command, arg_tokens[1]);
 			commLoop.sendMessage( jcmf.sendMessageToUser(arg_tokens[0], arg_tokens[1]) );
@@ -330,16 +358,20 @@ public class JCClient extends JFrame {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			// write commands
-			writeLineToScreen("<br>AVAILABLE COMMANDS");
-			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
-			writeLineToScreen(makeBold(Commands.ECHO.getText() + " : ") + "sends a message to the server, which echoes it back" );
+			writeLineToScreen(" ");
+			writeLineToScreen("USER COMMANDS");
 			writeLineToScreen(makeBold(Commands.LOGIN.getText() + " [username] [password] : ") + "logs in to the server with the username and password provided" );
+			writeLineToScreen(makeBold(Commands.CREAT_USER_AND_STORE.getText() + " [username] [password] : ") + "creates a new user with given credentials and logs in ready to chat" );
+			writeLineToScreen(makeBold("@[recipient] [msg] : ") + "sends a message to the given recipient" );
 			writeLineToScreen(makeBold(Commands.LOGOFF.getText() + " : ") + "logs the current user out" );
-			writeLineToScreen(makeBold(Commands.CREATE_USER.getText() + " [username] [password] : ") + "creates a new user with the username and password provided" );
-			writeLineToScreen(makeBold(Commands.DELETE_USER.getText() + " : ") + "deletes the account of the current user" );
-			writeLineToScreen(makeBold(Commands.CREATE_STORE.getText() + " : ") + "creates a message store for the current user (do this only once per account)" );
-			writeLineToScreen(makeBold(Commands.SEND_MSG.getText() + " [recipient] [msg] : ") + "sends a message to the given recipient" );
+			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
+			writeLineToScreen(" ");
+			writeLineToScreen("DEBUG COMMANDS");
+			writeLineToScreen(makeBold(Commands.ECHO.getText() + " : ") + "sends a message to the server, which echoes it back" );
 			writeLineToScreen(makeBold(Commands.QUERY_MSG.getText() + " : ") + "query the server for messages" );
+			writeLineToScreen(makeBold(Commands.CREATE_USER.getText() + " [username] [password] : ") + "creates a new user with the username and password provided" );
+			writeLineToScreen(makeBold(Commands.CREATE_STORE.getText() + " : ") + "creates a message store for the current user (do this only once per account)" );
+			writeLineToScreen(makeBold(Commands.DELETE_USER.getText() + " : ") + "deletes the account of the current user" );			
 		}
 		
 		else {
@@ -495,7 +527,11 @@ public class JCClient extends JFrame {
 			break;
 		case CREATE_USER:
 			if(success){
-				setUpUserAccount(currentUser);
+				if(currentUser.getUsername() != null && currentUser.getPassword() != null ) {
+					// in this case the command was 'new_user'
+					// do the rest of the account creation steps
+					setUpUserAccount(currentUser);
+				}
 			} else {
 				// failed account creation, reset current user info
 				currentUser.setUser(null, null);
@@ -555,13 +591,7 @@ public class JCClient extends JFrame {
 					break;
 				case 3:// not logged in
 					currentUser.setUser(null, null); // make sure no user is logged in
-					if(queryTimer.isRunning()){
-						queryTimer.stop(); // stop querying the server
-					} else {
-						// timer was not going off, so asume that the user tried to query
-						// print error
-						writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
-					}
+					queryTimer.stop(); // stop querying the server
 					break;
 				}
 			} else {
