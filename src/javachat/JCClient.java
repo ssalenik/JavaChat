@@ -373,6 +373,11 @@ public class JCClient extends JFrame {
 	public static String makeColor(String str, String HTMLColor) {
 		return "<font color=\"" + HTMLColor + "\">" + str + "</font>";
 	}
+	
+	public void sendMessage(JavaChatMessage outMessage) {
+		commLoop.sendMessage(outMessage);
+	}
+	
 	/**
 	 * Formats received message and writes to output
 	 * @param str

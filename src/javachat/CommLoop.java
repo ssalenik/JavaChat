@@ -35,37 +35,46 @@ public class CommLoop implements Runnable {
 			}
 			// now send message to server
 			JavaChatMessage outMessage = this.sendQueue.poll();
-			try {
-				System.out.println("sending message :\n" + outMessage);
-				server.sendMessage(outMessage);
 				
-				/* 
-		    	 * Loop until at least one message is received
-		    	 * and no more are available or the socket times out.
-		    	 * Store replies in the order they are received.
-		    	 */
-				LinkedList<JavaChatMessage> currentMessageReplies = new LinkedList<JavaChatMessage>();
-				while ( server.messageAvailable() || currentMessageReplies.isEmpty() ) {
-					// read reply from server
-					JavaChatMessage inMessage = server.readMessage();	
-					System.out.println("got reply :\n" + inMessage);
-					currentMessageReplies.add(inMessage);
-					try {
-						// sleep to wait for messages
-						Thread.sleep(100);
-					} catch (InterruptedException e) {
-						// sleep interrupted, this is OK
-					}
-				}
-				
-				// now put all received replies into received queue
-				for( JavaChatMessage inMessage : currentMessageReplies) {
-					this.receivedQueue.add(inMessage);
-				}
-			} catch (IOException e1) {
-				
+			LinkedList<JavaChatMessage> currentMessageReplies = sendAndReceive(outMessage);
+			// now put all received replies into received queue
+			for( JavaChatMessage inMessage : currentMessageReplies) {
+				this.receivedQueue.add(inMessage);
 			}
 		}
+	}
+	
+	public LinkedList<JavaChatMessage> sendAndReceive(JavaChatMessage outMessage) {
+		LinkedList<JavaChatMessage> currentMessageReplies = null;
+		
+		try {
+			System.out.println("sending message :\n" + outMessage);
+			server.sendMessage(outMessage);
+			
+			/* 
+	    	 * Loop until at least one message is received
+	    	 * and no more are available or the socket times out.
+	    	 * Store replies in the order they are received.
+	    	 */
+			currentMessageReplies = new LinkedList<JavaChatMessage>();
+			while ( server.messageAvailable() || currentMessageReplies.isEmpty() ) {
+				// read reply from server
+				JavaChatMessage inMessage = server.readMessage();	
+				System.out.println("got reply :\n" + inMessage);
+				currentMessageReplies.add(inMessage);
+				try {
+					// sleep to wait for messages
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					// sleep interrupted, this is OK
+				}
+			}
+			
+		} catch (IOException e) {			
+		}
+
+		return currentMessageReplies; 
+		
 	}
 
 	public void sendMessage(JavaChatMessage outMessage) {
