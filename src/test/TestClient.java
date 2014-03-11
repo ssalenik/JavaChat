@@ -24,7 +24,7 @@ public class TestClient {
 	
 	private static String hostName = "dsp2014.ece.mcgill.ca";
     private static int portNumber = 5000;
-    private String testUser = "testuser1234";
+    private String testUser = "testuser12345";
     private String testPass = "test";
     private String testMsg = "this is a test message";
 
@@ -53,6 +53,7 @@ public class TestClient {
 		//cleanup
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		commLoop.sendAndReceive( jcmf.deleteUser() );
+		Thread.sleep(250);
 	}
 	
 	
@@ -60,11 +61,8 @@ public class TestClient {
 	public void UserCreation_NormalCase() {
 		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 0);
+		assertTrue(reply.getMessageType() == 5 && reply.getSubMessageType() == 0);
 		
-		//cleanup
-		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
-		commLoop.sendAndReceive( jcmf.deleteUser() );
 	}
 	
 	@Test
@@ -72,11 +70,8 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);
-		
-		//cleanup
-		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		System.out.println(reply.getSubMessageType());
+		assertTrue(reply.getMessageType() == 5 && reply.getSubMessageType() == 1);
 	}
 	
 	@Test
@@ -85,10 +80,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
 		serverResponse = commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 2);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 5 && reply.getSubMessageType() == 2);
 	}
 	
 	@Test
@@ -102,10 +94,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 0);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 3 && reply.getSubMessageType() == 0);
 	}
 	
 	@Test
@@ -114,10 +103,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 3 && reply.getSubMessageType() == 1);
 	}
 	
 	@Test
@@ -125,10 +111,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser + "1", testPass) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 2);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 3 && reply.getSubMessageType() == 2);
 	}
 	
 	@Test
@@ -136,10 +119,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.login(testUser, testPass + "1") );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 2);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 3 && reply.getSubMessageType() == 2);
 	}
 	
 	@Test
@@ -148,10 +128,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.logoff() );	
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 0);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 4 && reply.getSubMessageType() == 2);
 	}
 	
 	
@@ -160,10 +137,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );		
 		serverResponse = commLoop.sendAndReceive( jcmf.logoff() );	
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 4 && reply.getSubMessageType() == 1);
 	}
 	
 	@Test
@@ -172,10 +146,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.queryMessages() );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 0);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 9 && reply.getSubMessageType() == 0);
 	}
 	
 	@Test
@@ -183,16 +154,10 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		commLoop.sendAndReceive( jcmf.createStore() );
-		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
-		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 0);
-		
+		commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );				
 		serverResponse = commLoop.sendAndReceive( jcmf.queryMessages() );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);	// 1 = message received
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 9 && reply.getSubMessageType() == 1);	// 1 = message received
 	}
 	
 	@Test
@@ -202,10 +167,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 8 && reply.getSubMessageType() == 1);
 	}
 	
 	@Test
@@ -214,10 +176,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.login(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser + "1", testMsg) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 2);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 8 && reply.getSubMessageType() == 2);
 	}
 	
 	@Test
@@ -225,10 +184,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.sendMessageToUser(testUser, testMsg) );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 3);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 8 && reply.getSubMessageType() == 3);
 	}
 	
 	@Test
@@ -236,10 +192,7 @@ public class TestClient {
 		commLoop.sendAndReceive( jcmf.createUser(testUser, testPass) );
 		serverResponse = commLoop.sendAndReceive( jcmf.deleteUser() );		
 		reply = serverResponse.getFirst();
-		assertTrue(reply.getSubMessageType() == 1);
-		
-		//cleanup		
-		commLoop.sendAndReceive( jcmf.deleteUser() );
+		assertTrue(reply.getMessageType() == 6 && reply.getSubMessageType() == 1);
 	}
 
 }
