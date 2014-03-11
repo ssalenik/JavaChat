@@ -13,8 +13,8 @@ public enum Commands {
 	QUERY_MSG(9, "query"),
 	HELP(10, "help");
 	
-	private int id;
-	private String text;
+	public final int id;
+	public final String text;
 	private Commands(int id, String text) {
 		this.id = id;
 		this.text = text;

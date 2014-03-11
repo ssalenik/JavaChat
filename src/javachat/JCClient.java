@@ -471,88 +471,120 @@ public class JCClient extends JFrame {
 		commLoop.sendMessage( jcmf.createStore() );
 	}	
 	
-	public void handleReply(JavaChatMessage inMessage) {
+	public void handleReply(CommContainer msgContainer) {
 		
+		// check if the messages succeeded based on replies
+		boolean success = checkSuccessReply(msgContainer);
 		
-		int type = inMessage.getMessageType();
-		int subType = inMessage.getSubMessageType();
-				
-
-		/*
-		 * //TODO
-		 * maybe this stuff below could be broken up into separate functions for a cleaner look?
-		 *  i.e. handleLogin(), handleLogoff(), etc.? 
-		 */
-		
-		// handle login
-		if (type == Commands.LOGIN.getId()) {
-			if (subType == 0) {
+		// take action accordingly
+		int sentType = msgContainer.outMessage.getMessageType();
+		final Commands[] vals = Commands.values();
+		switch (vals[sentType]) {
+		case LOGIN:
+			if(success){
 				queryTimer.start(); // successful login, start query timer
 			} else {
 				currentUser.setUser(null, null); // failed login, reset current user info
 			}
-		}
-		
-		// handle logoff
-		else if (type == Commands.LOGOFF.getId()) {
-			currentUser.setUser(null, null); // reset current user info on successful logoff
-		}
-		
-		// handle account creation
-		else if (type == Commands.CREATE_USER.getId()) {
-			if (subType == 0) {
+			break;
+		case LOGOFF:
+			if(success){
+				currentUser.setUser(null, null); // reset current user info on successful logoff
+				queryTimer.stop(); // stop querry timer
+			}
+			break;
+		case CREATE_USER:
+			if(success){
 				setUpUserAccount(currentUser);
 			} else {
-				currentUser.setUser(null, null); // failed account creation, reset current user info
+				// failed account creation, reset current user info
+				currentUser.setUser(null, null);
 			}
-		}
-		
-		else if (type == Commands.SEND_MSG.getId()) {
-			if (subType == 0) {
-				return;	// return: don't print reply from server
-			}
-		}
-		
-		// handle server queries
-		else if (type == Commands.QUERY_MSG.getId()) {
-			// stop query timer if we get a 'Must login first' message
-			if(inMessage.getMessageData().equals("Must login first")
-					&& queryTimer.isRunning()) 
-			{
+			break;
+		case CREATE_STORE:
+			// nothing to do
+			break;
+		case SEND_MSG:
+			// nothing to do
+			break;
+		case QUERY_MSG:
+			// nothing to do
+			break;
+		case DELETE_USER:
+			if(success) {
+				currentUser.setUser(null, null);
 				queryTimer.stop();
-				return;	// return: don't print reply from server
-				
-			// ignore if we get a 'No messages available" message
-			} else if( inMessage.getMessageData().equals("No messages available") ){
-				return;	// return: don't print reply from server
-				
-			// print if message from user
-			} else if (subType == 1) {
-				// split message on commas, into at most 3
-				String [] messageData = inMessage.messageData.split(",", 3);
-				// make sure the message makes sense
-				if (messageData.length == 3) {
-					writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
-				} else {
-					// not expected
-					// simply write the message data
+			}
+			break;
+		}
+	}
+	
+	/**
+	 * Checks if the sent message had a successful reply from the server
+	 * indicating that the action was performed.
+	 *  
+	 * @return true if reply indicated success; false otherwise
+	 */
+	private boolean checkSuccessReply(CommContainer msgContainer) {
+		boolean success = false;
+		// get the sent message type
+		int sentType = msgContainer.outMessage.getMessageType();
+		// loop through replies for success
+		for (JavaChatMessage inMessage : msgContainer.replies) {
+			int type = inMessage.getMessageType();
+			int subType = inMessage.getSubMessageType();
+			
+			if (type == Commands.QUERY_MSG.getId()) {
+				// handle query messages differently because sub type of 1 means there is a message
+				switch(subType) {
+				case 0:// no message, do nothing
+					success = true;
+					break;
+				case 1:// received message
+					success = true;
+					// split message on commas, into at most 3
+					String [] messageData = inMessage.messageData.split(",", 3);
+					// make sure the message makes sense
+					if (messageData.length == 3) {
+						writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
+					} else {
+						// not expected
+						// simply write the message data
+						writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+					}
+					break;
+				case 3:// not logged in
+					currentUser.setUser(null, null); // make sure no user is logged in
+					if(queryTimer.isRunning()){
+						queryTimer.stop(); // stop querying the server
+					} else {
+						// timer was not going off, so asume that the user tried to query
+						// print error
+						writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
+					}
+					break;
+				}
+			} else {
+				if (type == sentType && subType == 0) {
+					success = true;
+					// print message as success
 					writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
 				}
-				return; // return: don't print reply from server
 			}
 		}
-		
-		if (subType != 0 || type == Commands.BADLY_FORMATTED_MSG.getId()) {
-			// A message other than "Success" was returned by the server 
-			// This case applies to all messages EXCEPT query, where subType=1 means "there are messages"
-			writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
-			return;
+		// print errors if not successful, ignore unrelated messages
+		if(!success){
+			// print all relevant received messages as error
+			for (JavaChatMessage inMessage : msgContainer.replies) {
+				int type = inMessage.getMessageType();
+				// we want errors of the same type, or badly formated msg type
+				// we assume all other messages are server errors
+				if(type == sentType || type == Commands.BADLY_FORMATTED_MSG.getId()) {
+					writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
+				}
+			}
 		}
-		
-		else if (subType == 0) {
-			writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
-			return;
-		}
+		return success;
 	}
 
 

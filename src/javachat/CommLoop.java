@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CommLoop implements Runnable {
 	private ConcurrentLinkedQueue<JavaChatMessage> sendQueue;
-	private ConcurrentLinkedQueue<JavaChatMessage> receivedQueue;
+	private ConcurrentLinkedQueue<CommContainer> receivedQueue;
 	private Object mutex;
 	private ServerCommunication server;
 	private volatile boolean running = false;
@@ -14,7 +14,7 @@ public class CommLoop implements Runnable {
 	public CommLoop(ServerCommunication server) {
 		this.server = server;
 		this.sendQueue = new ConcurrentLinkedQueue<JavaChatMessage>();
-		this.receivedQueue = new ConcurrentLinkedQueue<JavaChatMessage>();
+		this.receivedQueue = new ConcurrentLinkedQueue<CommContainer>();
 		this.mutex = new Object();
 	}
 
@@ -37,11 +37,10 @@ public class CommLoop implements Runnable {
 			JavaChatMessage outMessage = this.sendQueue.poll();
 			
 			if( outMessage != null) {
-				LinkedList<JavaChatMessage> currentMessageReplies = sendAndReceive(outMessage);
-				// now put all received replies into received queue
-				for( JavaChatMessage inMessage : currentMessageReplies) {
-					this.receivedQueue.add(inMessage);
-				}
+				CommContainer msgContainer = new CommContainer(outMessage);
+				msgContainer.replies = sendAndReceive(msgContainer.outMessage);
+				// now put container into received queue
+				this.receivedQueue.add(msgContainer);
 			}
 		}
 	}
@@ -92,7 +91,7 @@ public class CommLoop implements Runnable {
 		return !receivedQueue.isEmpty();
 	}
 
-	public JavaChatMessage getReply() {
+	public CommContainer getReply() {
 		return receivedQueue.poll();
 	}
 	
