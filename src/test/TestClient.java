@@ -86,7 +86,7 @@ public class TestClient {
 	@Test
 	public void UserCreation_IllegalChars() {
 		//commLoop.sendAndReceive( jcmf.createUser(testUser + ",", testPass) );		
-		assertTrue(1 == 1); //TODO
+		assertTrue(1 == 1); //test manually
 	}
 	
 	@Test

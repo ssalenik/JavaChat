@@ -65,7 +65,7 @@ public class CommLoop implements Runnable {
 				currentMessageReplies.add(inMessage);
 				try {
 					// sleep to wait for messages
-					Thread.sleep(100);
+					Thread.sleep(300);
 				} catch (InterruptedException e) {
 					// sleep interrupted, this is OK
 				}

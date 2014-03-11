@@ -579,9 +579,9 @@ public class JCClient extends JFrame {
 		// loop through replies for success
 		for (JavaChatMessage inMessage : msgContainer.replies) {
 			int type = inMessage.getMessageType();
-			int subType = inMessage.getSubMessageType();
+			int subType = inMessage.getSubMessageType();		
 			
-			if (type == Commands.QUERY_MSG.getId()) {
+			if (sentType == Commands.QUERY_MSG.getId()) {
 				// handle query messages differently because sub type of 1 means there is a message
 				switch(subType) {
 				case 0:// no message, do nothing
@@ -600,7 +600,8 @@ public class JCClient extends JFrame {
 						writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
 					}
 					break;
-				case 3:// not logged in
+				case 2:// not logged in
+					success = true;
 					currentUser.setUser(null, null); // make sure no user is logged in
 					queryTimer.stop(); // stop querying the server
 					break;
