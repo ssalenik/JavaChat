@@ -358,7 +358,7 @@ public class JCClient extends JFrame {
 	public static String makeBold(String str) {
 		return "<b>" + str + "</b>";
 	}
-	public static String makeOrange(String str) {
+	public static String makePurple(String str) {
 		return makeColor(str, "#CC00CC");
 	}
 	public static String makeRed(String str) {
@@ -380,7 +380,7 @@ public class JCClient extends JFrame {
 	public void writeInMessageToScreen(String from, String time, String message) {
 		// write as received message
 		writeToScreen("<div align=\"right\" style=\"background-color:#F0F0F0;\"><p>"
-				+ makeBold(makeOrange(sanitize(from)) + ", " + sanitize(time)) + "</p>"
+				+ makeBold(makePurple(sanitize(from)) + ", " + sanitize(time)) + "</p>"
 				+ makeBold(makeBlue(sanitize(message))) + "</p></div>");
 	}
 	/**
@@ -389,7 +389,7 @@ public class JCClient extends JFrame {
 	 */
 	public void writeOutMessageToScreen(String user, String message) {
 		// write in format of message to screen
-		writeLineToScreen(makeBold(makeOrange(sanitize(user))));
+		writeLineToScreen(makeBold(makePurple(sanitize(user))));
 		writeLineToScreen(makeBold(makeGreen(sanitize(message))));
 	}
 	public void writeErrorToScreen(String str) {
