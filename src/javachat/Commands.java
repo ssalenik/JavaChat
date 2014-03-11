@@ -11,7 +11,7 @@ public enum Commands {
 	CREATE_STORE(7, "store"),
 	SEND_MSG(8, "msg"),
 	QUERY_MSG(9, "query"),
-	CREAT_USER_AND_STORE(10, "new_user"),
+	CREATE_USER_AND_STORE(10, "new_user"),
 	HELP(11, "help");
 	
 	public final int id;

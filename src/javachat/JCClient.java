@@ -229,8 +229,16 @@ public class JCClient extends JFrame {
 				writeErrorToScreen(sanitize("> Usernames may not contain commas! "));
 				return;
 			}
-			writeOutMessageToScreen(command, arg);
-			commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
+			if(currentUser.getUsername() != null && currentUser.getPassword() != null) {
+				// logged in, send message
+				writeOutMessageToScreen(command, arg);
+				commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
+			} else {
+				writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+				commLoop.sendMessage( jcmf.sendMessageToUser(username, arg) );
+			}
+			
+			
 			
 		}
 		
@@ -294,7 +302,7 @@ public class JCClient extends JFrame {
 			commLoop.sendMessage( jcmf.createUser(arg_tokens[0], arg_tokens[1]) );
 		}
 		
-		else if ( command.equals(Commands.CREAT_USER_AND_STORE.getText()) ) {
+		else if ( command.equals(Commands.CREATE_USER_AND_STORE.getText()) ) {
 			// write entered command to screen
 			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
 			if (arg_tokens.length != 2) { 
@@ -361,7 +369,7 @@ public class JCClient extends JFrame {
 			writeLineToScreen(" ");
 			writeLineToScreen("USER COMMANDS");
 			writeLineToScreen(makeBold(Commands.LOGIN.getText() + " [username] [password] : ") + "logs in to the server with the username and password provided" );
-			writeLineToScreen(makeBold(Commands.CREAT_USER_AND_STORE.getText() + " [username] [password] : ") + "creates a new user with given credentials and logs in ready to chat" );
+			writeLineToScreen(makeBold(Commands.CREATE_USER_AND_STORE.getText() + " [username] [password] : ") + "creates a new user with given credentials and logs in ready to chat" );
 			writeLineToScreen(makeBold("@[recipient] [msg] : ") + "sends a message to the given recipient" );
 			writeLineToScreen(makeBold(Commands.LOGOFF.getText() + " : ") + "logs the current user out" );
 			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
