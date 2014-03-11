@@ -115,7 +115,14 @@ public class JCClient extends JFrame {
 				        		JScrollPane.VERTICAL_SCROLLBAR_NEVER,
 				                JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         input.setPreferredSize(new Dimension(WIDTH,28));
-        chatPanel.add(sp2); 
+        chatPanel.add(sp2);
+        
+        // give input focus on start
+        this.addWindowListener( new WindowAdapter() {
+            public void windowOpened( WindowEvent e ){
+                input.requestFocus();
+            }
+        }); 
 
         setTitle("JavaChat");
         setSize(WIDTH, HEIGHT);
