@@ -11,10 +11,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
-import javax.swing.text.html.HTMLEditorKit;
 
 import utils.WrappingHTMLEditorKit;
-import javachat.*;
 
 public class JCClient extends JFrame {
 	
@@ -47,6 +45,9 @@ public class JCClient extends JFrame {
 		
         initUI();
         initClient();
+        
+        // shutdown hook to exit client cleanly on SIGTERM
+        Runtime.getRuntime().addShutdownHook(new Thread(new JCClientShutdown(this)));
     }
 
     public final void initUI() {
@@ -163,8 +164,13 @@ public class JCClient extends JFrame {
         replyTimer.start();
     }
     
-    public final void exitClient() {
+    public void exitServer() {
+    	commLoop.sendMessage( jcmf.exit() );
+    }
+    
+    public void cleanupCommThread() {
     	// first stop server comm thread
+    	System.out.println("stopping comm loop");
     	commLoop.stop();
     	try {
 			commThread.join();
@@ -173,13 +179,17 @@ public class JCClient extends JFrame {
 		}
     	
     	// now close the sockets
+    	System.out.println("closing sockets");
     	try {
 			server.closeSocket();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-    	
-    	// finally exit
+    }
+    
+    public final void exitClient() {
+    	cleanupCommThread();
+    	System.out.println("exiting JC");
     	System.exit(0);
     }
     

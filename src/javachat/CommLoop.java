@@ -9,7 +9,7 @@ public class CommLoop implements Runnable {
 	private ConcurrentLinkedQueue<JavaChatMessage> receivedQueue;
 	private Object mutex;
 	private ServerCommunication server;
-	private boolean running = false;
+	private volatile boolean running = false;
 
 	public CommLoop(ServerCommunication server) {
 		this.server = server;
@@ -25,7 +25,7 @@ public class CommLoop implements Runnable {
 		while(this.server.isConnected() && this.running == true) {
 			// wait for stuff to be in the queue
 			synchronized (mutex) {
-				if (this.sendQueue.isEmpty()) {
+				if (this.sendQueue.isEmpty() && this.running == true) {
 					try {
 						mutex.wait();
 					} catch (InterruptedException e) {
@@ -35,11 +35,13 @@ public class CommLoop implements Runnable {
 			}
 			// now send message to server
 			JavaChatMessage outMessage = this.sendQueue.poll();
-				
-			LinkedList<JavaChatMessage> currentMessageReplies = sendAndReceive(outMessage);
-			// now put all received replies into received queue
-			for( JavaChatMessage inMessage : currentMessageReplies) {
-				this.receivedQueue.add(inMessage);
+			
+			if( outMessage != null) {
+				LinkedList<JavaChatMessage> currentMessageReplies = sendAndReceive(outMessage);
+				// now put all received replies into received queue
+				for( JavaChatMessage inMessage : currentMessageReplies) {
+					this.receivedQueue.add(inMessage);
+				}
 			}
 		}
 	}
@@ -99,6 +101,10 @@ public class CommLoop implements Runnable {
 	 */
 	public void stop() {
 		this.running = false;
+		// notify the thread to stop
+		synchronized (mutex) {
+			mutex.notify();
+		}
 	}
 
 }
