@@ -552,6 +552,9 @@ public class JCClient extends JFrame {
 				queryTimer.stop();
 			}
 			break;
+		default:
+			// nothing to do
+			break;
 		}
 	}
 	
