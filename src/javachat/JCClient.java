@@ -582,29 +582,31 @@ public class JCClient extends JFrame {
 			int subType = inMessage.getSubMessageType();		
 			
 			if (sentType == Commands.QUERY_MSG.getId()) {
-				// handle query messages differently because sub type of 1 means there is a message
-				switch(subType) {
-				case 0:// no message, do nothing
-					success = true;
-					break;
-				case 1:// received message
-					success = true;
-					// split message on commas, into at most 3
-					String [] messageData = inMessage.messageData.split(",", 3);
-					// make sure the message makes sense
-					if (messageData.length == 3) {
-						writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
-					} else {
-						// not expected
-						// simply write the message data
-						writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+				if(type == sentType) {
+					// handle query messages differently because sub type of 1 means there is a message
+					switch(subType) {
+					case 0:// no message, do nothing
+						success = true;
+						break;
+					case 1:// received message
+						success = true;
+						// split message on commas, into at most 3
+						String [] messageData = inMessage.messageData.split(",", 3);
+						// make sure the message makes sense
+						if (messageData.length == 3) {
+							writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
+						} else {
+							// not expected
+							// simply write the message data
+							writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+						}
+						break;
+					case 2:// not logged in
+						success = true;
+						currentUser.setUser(null, null); // make sure no user is logged in
+						queryTimer.stop(); // stop querying the server
+						break;
 					}
-					break;
-				case 2:// not logged in
-					success = true;
-					currentUser.setUser(null, null); // make sure no user is logged in
-					queryTimer.stop(); // stop querying the server
-					break;
 				}
 			} else {
 				if (type == sentType && subType == 0) {

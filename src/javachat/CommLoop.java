@@ -47,25 +47,32 @@ public class CommLoop implements Runnable {
 	
 	public LinkedList<JavaChatMessage> sendAndReceive(JavaChatMessage outMessage) {
 		LinkedList<JavaChatMessage> currentMessageReplies = null;
+
+		int sentType = outMessage.getMessageType();
+		boolean sameReplyTypeReceived = false;
 		
 		try {
 			System.out.println("sending message :\n" + outMessage);
 			server.sendMessage(outMessage);
 			
 			/* 
-	    	 * Loop until at least one message is received
+	    	 * Loop until at least one message of the same as the sent type is
+	    	 * received or else a badly formatted message
 	    	 * and no more are available or the socket times out.
 	    	 * Store replies in the order they are received.
 	    	 */
 			currentMessageReplies = new LinkedList<JavaChatMessage>();
-			while ( server.messageAvailable() || currentMessageReplies.isEmpty() ) {
+			while ( sameReplyTypeReceived == false || server.messageAvailable() ) {
 				// read reply from server
 				JavaChatMessage inMessage = server.readMessage();	
 				System.out.println("got reply :\n" + inMessage);
 				currentMessageReplies.add(inMessage);
+				if (inMessage.getMessageType() == sentType) {
+					sameReplyTypeReceived = true;
+				}
 				try {
 					// sleep to wait for messages
-					Thread.sleep(300);
+					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					// sleep interrupted, this is OK
 				}
