@@ -1,31 +1,7 @@
 package javachat;
 
-import javachat.*;
-
 public class JCMFactory {
 	
-	
-	/* this should be changed to an enum
-	final static int CMD_EXIT = 0;
-	final static int CMD_BADLY_FORMATTED_MSG = 1;
-	final static int CMD_ECHO = 2;
-	final static int CMD_LOGIN = 3;
-	final static int CMD_LOGOFF = 4;
-	final static int CMD_CREATE_USR = 5;
-	final static int CMD_DELETE_USR = 6;
-	final static int CMD_CREATE_STORE = 7;
-	final static int CMD_SEND_MSG = 8;
-	final static int CMD_QUERY_MSG = 9;*/
-	
-	/*public JCMFactory(String username, String password) {
-		this.username = username;
-		this.password = password;
-	}*/
-	
-	/* 
-	 * If we have username/pass in the constructor we'll need to instantiate a new JCMfactory
-	 * for each user. Not very good practice IMO... 
-	 */
 	public JCMFactory() {}
 	
 	//TODO update function signatures to take 'User' objects instead of user/pass Strings
