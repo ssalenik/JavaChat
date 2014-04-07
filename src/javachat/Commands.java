@@ -11,7 +11,6 @@ public enum Commands {
 	CREATE_STORE(7, "store"),
 	SEND_MSG(8, "msg"),
 	QUERY_MSG(9, "query"),
-	CREATE_USER_AND_STORE(10, "new_user"),
 	REQUEST_SEND_FILE(10, "send_file"),
 	SEND_FILE_CHUNK(11, "send"),
 	CANCEL_SEND_FILE(12, "cancel_send"),
@@ -19,7 +18,9 @@ public enum Commands {
 	RECEIVE_FILE_CHUNK(14, "receive"),
 	CANCEL_RECEIVE_FILE(15, "cancel_receive"),
 	REJECT_RECEIVE_FILE(16, "reject_file"),
-	HELP(17, "help");
+	// helper commands, do not correspond to server commands
+	CREATE_USER_AND_STORE(17, "new_user"),
+	HELP(18, "help");
 	
 	public final int id;
 	public final String text;

@@ -14,6 +14,7 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
+import javax.swing.text.Element;
 
 import utils.WrappingHTMLEditorKit;
 
@@ -38,9 +39,14 @@ public class JCClient extends JFrame {
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
+
+	private JFileChooser filechooser;
+	private JCFileSender filesender;
 	
-	private JFileChooser fileChooser;
-	
+	/* vars used to keep track of file transfer progress text*/
+	private int transferStart;
+	private int transferEnd;
+	private String currentTransferTag;
 	/* this is used to make sure there is some white space at the bottom
 	 * of the output text pane for legibility
 	 */
@@ -89,11 +95,11 @@ public class JCClient extends JFrame {
 
                     // Show the new page in the editor pane.
                     // open file chooser dialog
-        			fileChooser.setSelectedFile(new File(originalFilename)); //set default filename
-        			int returnVal = fileChooser.showSaveDialog(msgPane);        			
+        			filechooser.setSelectedFile(new File(originalFilename)); //set default filename
+        			int returnVal = filechooser.showSaveDialog(msgPane);        			
         			
         	        if (returnVal == JFileChooser.APPROVE_OPTION) {
-        	            File file = fileChooser.getSelectedFile();
+        	            File file = filechooser.getSelectedFile();
         	            String newFilename = file.getName();
         	           // commLoop.sendMessage( jcmf.requestFileReceive(arg_tokens[0], filesize_str, filename));
         	            writeFileSaveToScreen(originalFilename, newFilename);
@@ -177,7 +183,8 @@ public class JCClient extends JFrame {
                 hostName);
             System.exit(1);
         }
-    	fileChooser = new JFileChooser();
+    	filechooser = new JFileChooser();
+    	filesender = new JCFileSender();
     	jcmf = new JCMFactory();
     	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
@@ -410,15 +417,28 @@ public class JCClient extends JFrame {
 				return;
 			}
 			
+			// check that another send isn't in progress
+			if(filesender.isSendInProgress()) {
+				writeErrorToScreen(sanitize("> Another send is in progress! "));
+				return;
+			}
+			
 			// open file chooser dialog
-			int returnVal = fileChooser.showOpenDialog(this);
+			int returnVal = filechooser.showOpenDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
-	            File file = fileChooser.getSelectedFile();
+	            File file = filechooser.getSelectedFile();
 	            String filename = file.getName();
 	            long filesize = file.length();
 	            String filesize_str = Long.toString(filesize);
-	            commLoop.sendMessage( jcmf.requestFileSend(arg_tokens[0], filesize_str, filename));
 	            writeLineToScreen(makeBold(sanitize("Attmepting to send \'" + filename + "\' of size " + filesize_str + " to " + arg_tokens[0])));
+	            // make sure the file sender is OK with it
+	            if(filesender.startFileSend(file)) {
+	            	// do the actual send
+	            	commLoop.sendMessage( jcmf.requestFileSend(arg_tokens[0], filesize_str, filename));
+	            } else {
+	            	writeErrorToScreen(sanitize("> Client-side error starting file send. "));
+					return;
+	            }
 	        } else {
 	        	// file selection canceled
 	        	writeLineToScreen(makeBold(sanitize("File send canceled.")));
@@ -437,6 +457,7 @@ public class JCClient extends JFrame {
 			writeLineToScreen(makeBold(Commands.LOGIN.getText() + " [username] [password] : ") + "logs in to the server with the username and password provided" );
 			writeLineToScreen(makeBold(Commands.CREATE_USER_AND_STORE.getText() + " [username] [password] : ") + "creates a new user with given credentials and logs in ready to chat" );
 			writeLineToScreen(makeBold("@[recipient] [msg] : ") + "sends a message to the given recipient" );
+			writeLineToScreen(makeBold(Commands.REQUEST_SEND_FILE.getText() +  " [recipient] : ") + "opens file selection dialog to select file to send to recipient");
 			writeLineToScreen(makeBold(Commands.LOGOFF.getText() + " : ") + "logs the current user out" );
 			writeLineToScreen(makeBold(Commands.EXIT.getText() + " : ") + "disconnect from the server and exit the program" );
 			writeLineToScreen(" ");
@@ -598,6 +619,74 @@ public class JCClient extends JFrame {
 		}
 	}
 	
+	/**
+	 * This is called to display file transfer progress when transfer first starts.
+	 * 
+	 * @param str
+	 */
+	private void writeNewTransferProgress(String str) {
+		try {
+			// get the location of the end of the text
+			int offset = msgDocument.getEndPosition().getOffset();
+			
+			// make sure there is some new lines at the bottom for legibility
+			int whiteSpaceLen = WHITE_SPACE_PADDING.length();
+			if(offset >= whiteSpaceLen) {
+				if (msgDocument.getText(
+						offset - whiteSpaceLen,
+						whiteSpaceLen).equals(WHITE_SPACE_PADDING))
+				{
+					offset = offset - whiteSpaceLen;
+				} else {
+					msgDocument.insertString(offset, WHITE_SPACE_PADDING, null);
+				}
+			} else {
+				msgDocument.insertString(offset, WHITE_SPACE_PADDING, null);
+			}
+			
+			// save start offset
+			this.transferStart = offset + 1;
+			try {
+				msgKit.insertHTML(msgDocument, offset + 1, str, 0, 0, null);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			// now scroll to the end
+			int end = msgDocument.getLength();
+			// get end offset
+			this.transferEnd = end - whiteSpaceLen;
+			msg.scrollRectToVisible(msg.modelToView(end));
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * This is called to update the file transfer progress. You MUST call writeNewTransferProress once first
+	 * for every new file transfer.
+	 * 
+	 * @param str
+	 */
+	private void writeUpdateTransferProgress(String str) {
+		try {
+			// first delete old stuff
+			msgDocument.replace(transferStart, transferEnd-transferStart, null, null);
+			int beforeInsert = msgDocument.getLength();
+			msgKit.insertHTML(msgDocument, transferStart, str, 0, 0, null);
+			// len of doc after insert
+			int afterInsert = msgDocument.getLength();
+			this.transferEnd = transferStart + (afterInsert - beforeInsert);
+			// update end offset
+		} catch (BadLocationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	public void setUpUserAccount(User user) {
 		commLoop.sendMessage( jcmf.login(user.getUsername(), user.getPassword()) );
 		commLoop.sendMessage( jcmf.createStore() );
@@ -650,6 +739,43 @@ public class JCClient extends JFrame {
 			if(success) {
 				currentUser.setUser(null, null);
 				queryTimer.stop();
+			}
+			break;
+		case REQUEST_SEND_FILE:
+			
+			if(success) {
+				System.out.println("request send file success response");
+				// check that file send is in progress
+				if(filesender.isSendInProgress()) {
+					// send the first chunk
+					System.out.println("sending file chunk");
+					commLoop.sendMessage(jcmf.sendFileChunk(filesender.getNextChunk()));
+				} else {
+					// send is not in progress, error?
+					System.err.println("Server accepted file transfer but send is not in progress");
+				}
+			} else {
+				// rejected file send, so cancel it client side
+				System.out.println("request send file BAD response");
+				filesender.cancelSend();
+			}
+			break;
+		case SEND_FILE_CHUNK:
+			if(success) {
+				// check if the send is complete
+				if(filesender.isSendComplete()) {
+					writeLineToScreen(sanitize("> File transfer complete."));
+				} else if(filesender.isSendInProgress()) {
+					// send another chunk
+					commLoop.sendMessage(jcmf.sendFileChunk(filesender.getNextChunk()));
+				} else {
+					// send is not in progress, error?
+					System.err.println("Server accepted file transfer but send is not in progress");
+				}
+			} else {
+				// rejected file send, so cancel it client side
+				filesender.cancelSend();
+				writeErrorToScreen(sanitize("> File transfer canceled."));
 			}
 			break;
 		default:
@@ -720,7 +846,27 @@ public class JCClient extends JFrame {
 					if (type == sentType && subType == 0) {
 						success = true;
 						// print message as success
-						writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+						// depending on type
+						final Commands[] vals = Commands.values();
+						switch (vals[sentType]) {
+							case SEND_FILE_CHUNK: {
+								// update transfer progress
+								writeUpdateTransferProgress(makeGreen(sanitize("> " + inMessage.getMessageData())));
+								break;
+							}
+							case REQUEST_SEND_FILE: {
+								// new transfer progress
+								writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+								writeNewTransferProgress(makeGreen(sanitize("> Transfered 0%.")));
+								break;
+							}
+							default: {
+								// write response message
+								writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+								break;
+							}
+						}
+						
 					}
 				}
 			}
