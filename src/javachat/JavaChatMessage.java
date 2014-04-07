@@ -11,6 +11,7 @@ public class JavaChatMessage {
 	int subMessageType;
 	int messageSize;
 	String messageData;
+	byte[] messageDataBin = null;
 	byte[] messageBytes = null;
 	
 	public JavaChatMessage(int messageType, String messageData) throws IllegalArgumentException {
@@ -19,6 +20,15 @@ public class JavaChatMessage {
 		this.messageData = messageData;
 		
 		getMessageByteArray();
+	}
+	
+	public JavaChatMessage(int messageType, byte[] messageData) throws IllegalArgumentException{
+		this.messageType = messageType;
+		this.subMessageType = 0;
+		this.messageData = "<binary data>";
+		this.messageDataBin = messageData;
+		
+		getBinMessageByteArray();
 	}
 	
 	public JavaChatMessage(int messageType, int subMessageType, int messageSize, String messageData, byte[] messageBytes) {
@@ -54,6 +64,25 @@ public class JavaChatMessage {
     	System.arraycopy(byteMessageSize, 0, this.messageBytes, MSG_INT_SIZE * 2, MSG_INT_SIZE);
     	System.arraycopy(byteMessageData, 0, this.messageBytes, MSG_INT_SIZE * 3, byteMessageData.length);
    	}
+	
+	private void getBinMessageByteArray() throws IllegalArgumentException {
+		byte[] byteMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageType).array();
+    	byte[] byteSubMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.subMessageType).array();
+    	byte[] byteMessageData = this.messageDataBin;
+    	this.messageSize = byteMessageData.length;
+    	
+    	// check max msg size
+    	if(this.messageSize > MSG_MAX_SIZE) {
+    		throw new IllegalArgumentException("Message data exceeds maximum size: " + MSG_MAX_SIZE + "bytes");
+    	}
+    	byte[] byteMessageSize = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageSize).array();
+		
+    	this.messageBytes = new byte[MSG_INT_SIZE * 3 + byteMessageData.length];
+    	System.arraycopy(byteMessageType, 0, this.messageBytes, 0, MSG_INT_SIZE);
+    	System.arraycopy(byteSubMessageType, 0, this.messageBytes, MSG_INT_SIZE, MSG_INT_SIZE);
+    	System.arraycopy(byteMessageSize, 0, this.messageBytes, MSG_INT_SIZE * 2, MSG_INT_SIZE);
+    	System.arraycopy(byteMessageData, 0, this.messageBytes, MSG_INT_SIZE * 3, byteMessageData.length);
+	}
 	
 	/**
 	 * Converts message parameters into byte array ready to be sent to the chat server.

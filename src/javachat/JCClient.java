@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
 import java.awt.event.*;
+import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
@@ -35,6 +36,8 @@ public class JCClient extends JFrame {
 	private static JTextArea input;
 	private static Timer queryTimer;
 	private static Timer replyTimer;
+	
+	private JFileChooser filechooser;
 	
 	/* this is used to make sure there is some white space at the bottom
 	 * of the output text pane for legibility
@@ -141,7 +144,8 @@ public class JCClient extends JFrame {
             System.err.println("Couldn't get I/O for the connection to " +
                 hostName);
             System.exit(1);
-        }     	
+        }
+    	filechooser = new JFileChooser();
     	jcmf = new JCMFactory();
     	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
@@ -360,6 +364,36 @@ public class JCClient extends JFrame {
 				return;
 			}
 			commLoop.sendMessage( jcmf.queryMessages() );
+		} else if ( command.equals(Commands.REQUEST_SEND_FILE.getText()) ) {
+			// write entered command to screen
+			writeLineToScreen(makeBold(sanitize(cmd) + " " + sanitize(arg)));
+			if (arg_tokens.length != 1) { 
+				writeErrorToScreen(sanitize("> Usage: SEND_FILE [username] "));
+				return;
+			} else if (arg_tokens[0].equals("")) {
+				writeErrorToScreen(sanitize("> Usage: SEND_FILE [username] "));
+				return;
+			} else if (arg_tokens[0].contains(",")) {
+				writeErrorToScreen(sanitize("> Usernames maynot contain commas! "));
+				return;
+			}
+			
+			// open file chooser dialog
+			int returnVal = filechooser.showOpenDialog(this);
+	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+	            File file = filechooser.getSelectedFile();
+	            String filename = file.getName();
+	            long filesize = file.length();
+	            String filesize_str = Long.toString(filesize);
+	            commLoop.sendMessage( jcmf.requestFileSend(arg_tokens[0], filesize_str, filename));
+	            writeLineToScreen(makeBold(sanitize("Attmepting to send \'" + filename + "\' of size " + filesize_str + " to " + arg_tokens[0])));
+	        } else {
+	        	// file selection canceled
+	        	writeLineToScreen(makeBold(sanitize("File send canceled.")));
+	        	return;
+	        }
+			
+			
 		}
 		
 		else if ( command.equals(Commands.HELP.getText()) ) {
