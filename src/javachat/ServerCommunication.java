@@ -56,6 +56,7 @@ public class ServerCommunication {
 	}
 	
 	public void sendMessage(JavaChatMessage message) throws IOException {
+		System.out.println("sending message of len: " + message.messageBytes.length);
 		this.outStream.write(message.messageBytes);
 	}
 	

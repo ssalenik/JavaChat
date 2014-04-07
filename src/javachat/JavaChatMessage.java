@@ -11,7 +11,7 @@ public class JavaChatMessage {
 	int subMessageType;
 	int messageSize;
 	String messageData;
-	byte[] messageDataBin = null;
+	byte[] messageDataBin;
 	byte[] messageBytes = null;
 	
 	public JavaChatMessage(int messageType, String messageData) throws IllegalArgumentException {
@@ -26,7 +26,9 @@ public class JavaChatMessage {
 		this.messageType = messageType;
 		this.subMessageType = 0;
 		this.messageData = "<binary data>";
-		this.messageDataBin = messageData;
+		// copy the array
+		this.messageDataBin = new byte[messageData.length];
+		System.arraycopy( messageData, 0, this.messageDataBin, 0, messageData.length );
 		
 		getBinMessageByteArray();
 	}
@@ -68,8 +70,7 @@ public class JavaChatMessage {
 	private void getBinMessageByteArray() throws IllegalArgumentException {
 		byte[] byteMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageType).array();
     	byte[] byteSubMessageType = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.subMessageType).array();
-    	byte[] byteMessageData = this.messageDataBin;
-    	this.messageSize = byteMessageData.length;
+    	this.messageSize = this.messageDataBin.length;
     	
     	// check max msg size
     	if(this.messageSize > MSG_MAX_SIZE) {
@@ -77,11 +78,11 @@ public class JavaChatMessage {
     	}
     	byte[] byteMessageSize = ByteBuffer.allocate(MSG_INT_SIZE).putInt(this.messageSize).array();
 		
-    	this.messageBytes = new byte[MSG_INT_SIZE * 3 + byteMessageData.length];
+    	this.messageBytes = new byte[MSG_INT_SIZE * 3 + messageDataBin.length];
     	System.arraycopy(byteMessageType, 0, this.messageBytes, 0, MSG_INT_SIZE);
     	System.arraycopy(byteSubMessageType, 0, this.messageBytes, MSG_INT_SIZE, MSG_INT_SIZE);
     	System.arraycopy(byteMessageSize, 0, this.messageBytes, MSG_INT_SIZE * 2, MSG_INT_SIZE);
-    	System.arraycopy(byteMessageData, 0, this.messageBytes, MSG_INT_SIZE * 3, byteMessageData.length);
+    	System.arraycopy(messageDataBin, 0, this.messageBytes, MSG_INT_SIZE * 3, messageDataBin.length);
 	}
 	
 	/**

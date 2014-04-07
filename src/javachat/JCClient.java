@@ -38,6 +38,7 @@ public class JCClient extends JFrame {
 	private static Timer replyTimer;
 	
 	private JFileChooser filechooser;
+	private JCFileSender filesender;
 	
 	/* this is used to make sure there is some white space at the bottom
 	 * of the output text pane for legibility
@@ -146,6 +147,7 @@ public class JCClient extends JFrame {
             System.exit(1);
         }
     	filechooser = new JFileChooser();
+    	filesender = new JCFileSender();
     	jcmf = new JCMFactory();
     	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
@@ -378,6 +380,12 @@ public class JCClient extends JFrame {
 				return;
 			}
 			
+			// check that another send isn't in progress
+			if(filesender.isSendInProgress()) {
+				writeErrorToScreen(sanitize("> Another send is in progress! "));
+				return;
+			}
+			
 			// open file chooser dialog
 			int returnVal = filechooser.showOpenDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -385,8 +393,15 @@ public class JCClient extends JFrame {
 	            String filename = file.getName();
 	            long filesize = file.length();
 	            String filesize_str = Long.toString(filesize);
-	            commLoop.sendMessage( jcmf.requestFileSend(arg_tokens[0], filesize_str, filename));
 	            writeLineToScreen(makeBold(sanitize("Attmepting to send \'" + filename + "\' of size " + filesize_str + " to " + arg_tokens[0])));
+	            // make sure the file sender is OK with it
+	            if(filesender.startFileSend(file)) {
+	            	// do the actual send
+	            	commLoop.sendMessage( jcmf.requestFileSend(arg_tokens[0], filesize_str, filename));
+	            } else {
+	            	writeErrorToScreen(sanitize("> Client-side error starting file send. "));
+					return;
+	            }
 	        } else {
 	        	// file selection canceled
 	        	writeLineToScreen(makeBold(sanitize("File send canceled.")));
@@ -592,6 +607,43 @@ public class JCClient extends JFrame {
 			if(success) {
 				currentUser.setUser(null, null);
 				queryTimer.stop();
+			}
+			break;
+		case REQUEST_SEND_FILE:
+			
+			if(success) {
+				System.out.println("request send file success response");
+				// check that file send is in progress
+				if(filesender.isSendInProgress()) {
+					// send the first chunk
+					System.out.println("sending file chunk");
+					commLoop.sendMessage(jcmf.sendFileChunk(filesender.getNextChunk()));
+				} else {
+					// send is not in progress, error?
+					System.err.println("Server accepted file transfer but send is not in progress");
+				}
+			} else {
+				// rejected file send, so cancel it client side
+				System.out.println("request send file BAD response");
+				filesender.cancelSend();
+			}
+			break;
+		case SEND_FILE_CHUNK:
+			if(success) {
+				// check if the send is complete
+				if(filesender.isSendComplete()) {
+					writeLineToScreen(sanitize("> File transfer complete."));
+				} else if(filesender.isSendInProgress()) {
+					// send another chunk
+					commLoop.sendMessage(jcmf.sendFileChunk(filesender.getNextChunk()));
+				} else {
+					// send is not in progress, error?
+					System.err.println("Server accepted file transfer but send is not in progress");
+				}
+			} else {
+				// rejected file send, so cancel it client side
+				filesender.cancelSend();
+				writeErrorToScreen(sanitize("> File transfer canceled."));
 			}
 			break;
 		default:

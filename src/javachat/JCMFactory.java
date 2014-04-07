@@ -45,6 +45,10 @@ public class JCMFactory {
 	public JavaChatMessage requestFileSend(String destUser, String filesize, String filename) {
 		return new JavaChatMessage( Commands.REQUEST_SEND_FILE.getId(), destUser + "," + filesize + "," + filename);
 	}
+	
+	public JavaChatMessage sendFileChunk(byte[] fileBytes) {
+		return new JavaChatMessage(Commands.SEND_FILE_CHUNK.getId(), fileBytes);
+	}
 	// Concatenates two strings and separates them with a comma
 	public String formatArgs(String arg0, String arg1) {
 		return arg0 + "," + arg1;
