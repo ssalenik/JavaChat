@@ -10,6 +10,8 @@ import java.net.UnknownHostException;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
@@ -37,7 +39,7 @@ public class JCClient extends JFrame {
 	private static Timer queryTimer;
 	private static Timer replyTimer;
 	
-	private JFileChooser filechooser;
+	private JFileChooser fileChooser;
 	
 	/* this is used to make sure there is some white space at the bottom
 	 * of the output text pane for legibility
@@ -73,6 +75,36 @@ public class JCClient extends JFrame {
         msgDocument = new HTMLDocument();
         msg.setEditorKit(msgKit);
         msg.setDocument(msgDocument);
+        
+        msg.addHyperlinkListener(new HyperlinkListener() {
+        	public void hyperlinkUpdate(HyperlinkEvent evt) {
+        		if (evt.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+                    JTextPane msgPane = (JTextPane)evt.getSource();
+
+                    String fileInfo = evt.getDescription();
+                    String[] file_tokens = fileInfo.trim().split(" ", 2);
+                    String originalFilename = file_tokens[1].trim();
+                    System.out.println("user: " + file_tokens[0].trim());
+                    System.out.println("original: " + originalFilename);
+
+                    // Show the new page in the editor pane.
+                    // open file chooser dialog
+        			fileChooser.setSelectedFile(new File(originalFilename)); //set default filename
+        			int returnVal = fileChooser.showSaveDialog(msgPane);        			
+        			
+        	        if (returnVal == JFileChooser.APPROVE_OPTION) {
+        	            File file = fileChooser.getSelectedFile();
+        	            String newFilename = file.getName();
+        	           // commLoop.sendMessage( jcmf.requestFileReceive(arg_tokens[0], filesize_str, filename));
+        	            writeFileSaveToScreen(originalFilename, newFilename);
+        	        } else {
+        	        	// file selection canceled
+        	        	writeLineToScreen(makeBold(sanitize("File receive canceled.")));
+        	        	return;
+        	        }
+                }
+        	}
+        });
         
         // User input text area
         input = new JTextArea();
@@ -145,7 +177,7 @@ public class JCClient extends JFrame {
                 hostName);
             System.exit(1);
         }
-    	filechooser = new JFileChooser();
+    	fileChooser = new JFileChooser();
     	jcmf = new JCMFactory();
     	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
@@ -379,9 +411,9 @@ public class JCClient extends JFrame {
 			}
 			
 			// open file chooser dialog
-			int returnVal = filechooser.showOpenDialog(this);
+			int returnVal = fileChooser.showOpenDialog(this);
 	        if (returnVal == JFileChooser.APPROVE_OPTION) {
-	            File file = filechooser.getSelectedFile();
+	            File file = fileChooser.getSelectedFile();
 	            String filename = file.getName();
 	            long filesize = file.length();
 	            String filesize_str = Long.toString(filesize);
@@ -449,11 +481,17 @@ public class JCClient extends JFrame {
 	public static String makeBold(String str) {
 		return "<b>" + str + "</b>";
 	}
+	public static String makeUnderlined(String str) {
+		return "<u>" + str + "</u>";
+	}
 	public static String makePurple(String str) {
 		return makeColor(str, "#CC00CC");
 	}
 	public static String makeRed(String str) {
 		return makeColor(str, "red");
+	}
+	public static String makeOrange(String str) {
+		return makeColor(str, "orange");
 	}
 	public static String makeBlue(String str) {
 		return makeColor(str, "blue");
@@ -498,6 +536,26 @@ public class JCClient extends JFrame {
 	 */
 	public void writeLineToScreen(String str) {
 		writeToScreen("<p>" + str + "</p>");
+	}
+	
+	public void writeInFileToScreen(String from, String time, String filename) {
+		writeToScreen("<div align=\"right\" style=\"background-color:#F0F0F0;\"><p>"
+				+ "Received file " + makeBold(makeOrange(sanitize(filename))) + " from "
+				+ makeBold(makePurple(sanitize(from)) + ", " + sanitize(time)) + "</p>"
+				+ "<a href='" + sanitize(from) + " " + sanitize(filename) +"'>" 
+				+ makeUnderlined(makeBlue("Click to download file")) + "</a></p></div>");
+	}
+	
+	public void writeFileSaveToScreen(String originalFilename, String newFilename) {
+		if (originalFilename.equals(newFilename)) 
+			writeToScreen("<div align=\"right\" style=\"background-color:#F0F0F0;\"><p>"
+  				  + sanitize("Attempting to save file ") 
+  				  + makeBold(makeOrange(sanitize(originalFilename))) + "...</p></div>");
+		else 
+			writeToScreen("<div align=\"right\" style=\"background-color:#F0F0F0;\"><p>"
+	    				  + sanitize("Attempting to save file ") 
+	    				  + makeBold(makeOrange(sanitize(originalFilename))) + " as " 
+	    				  + makeBold(makeOrange(sanitize(newFilename))) + "...</p></div>");
 	}
 
 	/**
@@ -608,6 +666,7 @@ public class JCClient extends JFrame {
 	 */
 	private boolean checkSuccessReply(CommContainer msgContainer) {
 		boolean success = false;
+		String [] messageData;
 		// get the sent message type
 		int sentType = msgContainer.outMessage.getMessageType();
 		
@@ -627,7 +686,7 @@ public class JCClient extends JFrame {
 						case 1:// received message
 							success = true;
 							// split message on commas, into at most 3
-							String [] messageData = inMessage.messageData.split(",", 3);
+							messageData = inMessage.messageData.split(",", 3);
 							// make sure the message makes sense
 							if (messageData.length == 3) {
 								writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
@@ -641,6 +700,19 @@ public class JCClient extends JFrame {
 							success = true;
 							currentUser.setUser(null, null); // make sure no user is logged in
 							queryTimer.stop(); // stop querying the server
+							break;
+						case 3://received file
+							success = true;
+							// split message on commas, into at most 3
+							messageData = inMessage.messageData.split(",", 3);
+							// make sure the message makes sense
+							if (messageData.length == 3) {
+								writeInFileToScreen(messageData[0], messageData[1], messageData[2]);
+							} else {
+								// not expected
+								// simply write the message data
+								writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+							}
 							break;
 						}
 					}
