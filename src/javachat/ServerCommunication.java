@@ -2,32 +2,45 @@ package javachat;
 
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import javachat.JavaChatMessage;;
 
 public class ServerCommunication {
-	private Socket socket;
+	private SSLSocket socket;
 	private DataOutputStream outStream;
 	private DataInputStream inStream;
+//	private PushbackInputStream inStream;
 	
 	public ServerCommunication(String hostName, int portNumber) throws IOException {
-		Socket newSocket = new Socket(hostName, portNumber);
+		String trustStorePath = "./ssl/truststore.jks";
+		String trustStorePassword = "javachat";
+		
+		System.setProperty("javax.net.ssl.trustStore", trustStorePath);
+		System.setProperty("javax.net.ssl.trustStorePassword", trustStorePassword);
+		
+		SSLSocketFactory sf = (SSLSocketFactory) SSLSocketFactory.getDefault();
+		SSLSocket newSocket = (SSLSocket) sf.createSocket(hostName, portNumber);
 		newSocket.setSoTimeout(250);	// need timeout to ensure that we don't block infinitely on read()
 		this.setSocket(newSocket);
 	}
 	
-	public ServerCommunication(Socket socket) throws IOException {
+	public ServerCommunication(SSLSocket socket) throws IOException {
 		socket.setSoTimeout(250);
 		this.setSocket(socket);
 	}
 	
-	public void setSocket(Socket socket) throws IOException {
+	public void setSocket(SSLSocket socket) throws IOException {
 		// close previous socket if it exists
 		this.closeSocket();
 		
 		this.socket = socket;
     	this.outStream = new DataOutputStream(socket.getOutputStream());
     	this.inStream = new DataInputStream(socket.getInputStream());
+//    	this.inStream = new PushbackInputStream(socket.getInputStream());
 	}
 	
 	public void closeSocket() throws IOException {
@@ -56,19 +69,22 @@ public class ServerCommunication {
 	 */
 	public JavaChatMessage readMessage() throws IOException {
 		try {
-			byte[] byteMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
-	    	byte[] byteSubMessageType = new byte[JavaChatMessage.MSG_INT_SIZE];
-	    	byte[] byteMessageSize = new byte[JavaChatMessage.MSG_INT_SIZE];
+			byte[] headers = new byte[12];
+			int bytesRead = 0;
+			while(bytesRead < 12) {
+			  bytesRead += this.inStream.read(headers, bytesRead, 12 - bytesRead);
+			}
+			
+			byte[] byteMessageType = Arrays.copyOfRange(headers,0,4);
+			byte[] byteSubMessageType = Arrays.copyOfRange(headers,4,8);
+			byte[] byteMessageSize = Arrays.copyOfRange(headers,8,12);
 	    	    	
-	    	// read message
-	    	this.inStream.read(byteMessageType, 0, JavaChatMessage.MSG_INT_SIZE);
-	    	int messageType = JavaChatMessage.bytesToInt(byteMessageType);
-	    	
-	    	this.inStream.read(byteSubMessageType, 0, byteSubMessageType.length);
-	    	int subMessageType = JavaChatMessage.bytesToInt(byteSubMessageType);
-	    	
-	    	this.inStream.read(byteMessageSize, 0, byteMessageSize.length);
-	    	int messageSize = JavaChatMessage.bytesToInt(byteMessageSize);
+	    	int messageType = JavaChatMessage.bytesToInt(byteMessageType);	  	
+//	    	System.out.println("Type: " + messageType);	    	
+	    	int subMessageType = JavaChatMessage.bytesToInt(byteSubMessageType);	    	
+//	    	System.out.println("Sub: " + subMessageType);	    	
+	    	int messageSize = JavaChatMessage.bytesToInt(byteMessageSize);	    	
+//	    	System.out.println("Size: " + messageSize);
 	    	
 	    	byte[] byteMessageData = new byte[messageSize];
 	    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
@@ -80,10 +96,24 @@ public class ServerCommunication {
 	    	
 		} catch (java.net.SocketTimeoutException e) {
 			return new JavaChatMessage(-1, " ");	// socket timeout: return JCM of type -1
+		} catch (IndexOutOfBoundsException e) {
+			return new JavaChatMessage(-1, " ");	// socket timeout: return JCM of type -1
 		}
 	}
 	
 	public boolean messageAvailable() throws IOException {
+//		try {
+//			int data = this.inStream.read();
+//			this.inStream.unread(data);
+//			System.out.println("TRY");
+//			return true;
+//		} catch (IOException e) {
+//			// no data on input stream
+//			System.out.println("CATCH");
+//			return false;
+//		}		
+		
+		
 		if(this.inStream.available() > 0 ) {
 			return true;
 		} else {

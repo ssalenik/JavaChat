@@ -62,7 +62,15 @@ public class CommLoop implements Runnable {
 	    	 * Store replies in the order they are received.
 	    	 */
 			currentMessageReplies = new LinkedList<JavaChatMessage>();
+			
+			/*
+			 * server.messageAvailable never actually returns True, so what is its purpose?
+			 */
 			while ( sameReplyTypeReceived == false || server.messageAvailable() ) {
+				if (sentType == Commands.EXIT.getId()) {
+					break;	//Don't wait for a reply for "exit" messages
+				}
+				
 				// read reply from server
 				JavaChatMessage inMessage = server.readMessage();	
 				System.out.println("got reply :\n" + inMessage);

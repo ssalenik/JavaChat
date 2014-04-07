@@ -22,7 +22,7 @@ public class JCClient extends JFrame {
 	private CommLoop commLoop;
 	private User currentUser;
 	
-	String hostName = "dsp2014.ece.mcgill.ca";
+	String hostName = "localhost";
     int portNumber = 5000;
 
 	private static final long serialVersionUID = 5935284425769244825L;
@@ -576,57 +576,63 @@ public class JCClient extends JFrame {
 		boolean success = false;
 		// get the sent message type
 		int sentType = msgContainer.outMessage.getMessageType();
-		// loop through replies for success
-		for (JavaChatMessage inMessage : msgContainer.replies) {
-			int type = inMessage.getMessageType();
-			int subType = inMessage.getSubMessageType();		
-			
-			if (sentType == Commands.QUERY_MSG.getId()) {
-				if(type == sentType) {
-					// handle query messages differently because sub type of 1 means there is a message
-					switch(subType) {
-					case 0:// no message, do nothing
-						success = true;
-						break;
-					case 1:// received message
-						success = true;
-						// split message on commas, into at most 3
-						String [] messageData = inMessage.messageData.split(",", 3);
-						// make sure the message makes sense
-						if (messageData.length == 3) {
-							writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
-						} else {
-							// not expected
-							// simply write the message data
-							writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
-						}
-						break;
-					case 2:// not logged in
-						success = true;
-						currentUser.setUser(null, null); // make sure no user is logged in
-						queryTimer.stop(); // stop querying the server
-						break;
-					}
-				}
-			} else {
-				if (type == sentType && subType == 0) {
-					success = true;
-					// print message as success
-					writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
-				}
-			}
-		}
-		// print errors if not successful, ignore unrelated messages
-		if(!success){
-			// print all relevant received messages as error
+		
+		try {
+			// loop through replies for success
 			for (JavaChatMessage inMessage : msgContainer.replies) {
 				int type = inMessage.getMessageType();
-				// we want errors of the same type, or badly formated msg type
-				// we assume all other messages are server errors
-				if(type == sentType || type == Commands.BADLY_FORMATTED_MSG.getId()) {
-					writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
+				int subType = inMessage.getSubMessageType();		
+				
+				if (sentType == Commands.QUERY_MSG.getId()) {
+					if(type == sentType) {
+						// handle query messages differently because sub type of 1 means there is a message
+						switch(subType) {
+						case 0:// no message, do nothing
+							success = true;
+							break;
+						case 1:// received message
+							success = true;
+							// split message on commas, into at most 3
+							String [] messageData = inMessage.messageData.split(",", 3);
+							// make sure the message makes sense
+							if (messageData.length == 3) {
+								writeInMessageToScreen(messageData[0], messageData[1], messageData[2]);
+							} else {
+								// not expected
+								// simply write the message data
+								writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+							}
+							break;
+						case 2:// not logged in
+							success = true;
+							currentUser.setUser(null, null); // make sure no user is logged in
+							queryTimer.stop(); // stop querying the server
+							break;
+						}
+					}
+				} else {
+					if (type == sentType && subType == 0) {
+						success = true;
+						// print message as success
+						writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
+					}
 				}
 			}
+		 
+		
+			// print errors if not successful, ignore unrelated messages
+			if(!success){
+				// print all relevant received messages as error
+				for (JavaChatMessage inMessage : msgContainer.replies) {
+					int type = inMessage.getMessageType();
+					// we want errors of the same type, or badly formated msg type
+					// we assume all other messages are server errors
+					if(type == sentType || type == Commands.BADLY_FORMATTED_MSG.getId()) {
+						writeErrorToScreen(sanitize("> " + inMessage.getMessageData()));
+					}
+				}
+			}
+		}catch (NullPointerException e) {
 		}
 		return success;
 	}
