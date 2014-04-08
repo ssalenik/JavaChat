@@ -87,10 +87,18 @@ public class JCClient extends JFrame {
         		if (evt.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                     JTextPane msgPane = (JTextPane)evt.getSource();
 
+                    
+                    // from, filename, id, filesize
                     String fileInfo = evt.getDescription();
-                    String[] file_tokens = fileInfo.trim().split(" ", 2);
+                    String[] file_tokens = fileInfo.trim().split(" ", 4);
+                    String from = file_tokens[0].trim();
                     String originalFilename = file_tokens[1].trim();
-                    System.out.println("user: " + file_tokens[0].trim());
+                    String id_str = file_tokens[2].trim();
+                    String filesize_str = file_tokens[3].trim();
+                    int file_id = Integer.parseInt(id_str);
+                    long filesize = Long.parseLong(filesize_str);
+                    
+                    System.out.println("user: " + from);
                     System.out.println("original: " + originalFilename);
 
                     // Show the new page in the editor pane.
@@ -559,11 +567,11 @@ public class JCClient extends JFrame {
 		writeToScreen("<p>" + str + "</p>");
 	}
 	
-	public void writeInFileToScreen(String from, String time, String filename) {
+	public void writeInFileToScreen(String from, String id, String time, String filesize, String filename) {
 		writeToScreen("<div align=\"right\" style=\"background-color:#F0F0F0;\"><p>"
 				+ "Received file " + makeBold(makeOrange(sanitize(filename))) + " from "
 				+ makeBold(makePurple(sanitize(from)) + ", " + sanitize(time)) + "</p>"
-				+ "<a href='" + sanitize(from) + " " + sanitize(filename) +"'>" 
+				+ "<a href='" + sanitize(from) + " " + sanitize(filename) + " " + sanitize(id) + " " + sanitize(filesize) + "'>" 
 				+ makeUnderlined(makeBlue("Click to download file")) + "</a></p></div>");
 	}
 	
@@ -830,10 +838,15 @@ public class JCClient extends JFrame {
 						case 3://received file
 							success = true;
 							// split message on commas, into at most 3
-							messageData = inMessage.messageData.split(",", 3);
+							messageData = inMessage.messageData.split(",", 5);
 							// make sure the message makes sense
-							if (messageData.length == 3) {
-								writeInFileToScreen(messageData[0], messageData[1], messageData[2]);
+							if (messageData.length == 5) {
+								writeInFileToScreen(
+										messageData[0],	// from
+										messageData[1], // file id
+										messageData[2], // time
+										messageData[3], // size
+										messageData[4]);// file name
 							} else {
 								// not expected
 								// simply write the message data
