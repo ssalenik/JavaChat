@@ -87,7 +87,10 @@ public class ServerCommunication {
 //	    	System.out.println("Size: " + messageSize);
 	    	
 	    	byte[] byteMessageData = new byte[messageSize];
-	    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
+	    	bytesRead = 0;
+	    	while(bytesRead < messageSize) {
+	    		bytesRead += this.inStream.read(byteMessageData, bytesRead, byteMessageData.length - bytesRead);
+	    	}
 	    	
 	    	// bit of a hack due to 'legacy' code, data should just be stored in bin format by default
 	    	if(messageType == Commands.RECEIVE_FILE_CHUNK.getId() && subMessageType == 0) {
