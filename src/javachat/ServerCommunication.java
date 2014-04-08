@@ -88,11 +88,20 @@ public class ServerCommunication {
 	    	
 	    	byte[] byteMessageData = new byte[messageSize];
 	    	this.inStream.read(byteMessageData, 0, byteMessageData.length);
-	    	String messageData = JavaChatMessage.bytesToString(byteMessageData);
 	    	
-	    	byte[] messageBytes = new byte[JavaChatMessage.MSG_INT_SIZE * 3 + messageSize]; 
-	    	
-	    	return new JavaChatMessage(messageType, subMessageType, messageSize, messageData, messageBytes);
+	    	// bit of a hack due to 'legacy' code, data should just be stored in bin format by default
+	    	if(messageType == Commands.RECEIVE_FILE_CHUNK.getId() && subMessageType == 0) {
+	    		// bin data
+	    		JavaChatMessage msg = new JavaChatMessage(messageType, byteMessageData);
+	    		msg.messageData = "<binary data>";
+	    		return msg;
+	    	} else {
+		    	String messageData = JavaChatMessage.bytesToString(byteMessageData);
+		    	
+		    	byte[] messageBytes = new byte[JavaChatMessage.MSG_INT_SIZE * 3 + messageSize]; 
+		    	
+		    	return new JavaChatMessage(messageType, subMessageType, messageSize, messageData, messageBytes);
+	    	}
 	    	
 		} catch (java.net.SocketTimeoutException e) {
 			return new JavaChatMessage(-1, " ");	// socket timeout: return JCM of type -1

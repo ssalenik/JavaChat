@@ -14,7 +14,6 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
-import javax.swing.text.Element;
 
 import utils.WrappingHTMLEditorKit;
 
@@ -42,17 +41,23 @@ public class JCClient extends JFrame {
 
 	private JFileChooser filechooser;
 	private JCFileSender filesender;
+	private JCFileReceiver filereceiver;
 	
 	/* vars used to keep track of file transfer progress text*/
 	private int transferStart;
 	private int transferEnd;
-	private String currentTransferTag;
+	private int receiveStart;
+	private int receiveEnd;
 	/* this is used to make sure there is some white space at the bottom
 	 * of the output text pane for legibility
 	 */
 	public static final String WHITE_SPACE_PADDING = "\n\n\n\n\n\n\n";
 
 	public JCClient() {
+		
+    	filechooser = new JFileChooser();
+    	filesender = new JCFileSender();
+    	filereceiver = new JCFileReceiver();
 		
         initUI();
         initClient();
@@ -87,6 +92,11 @@ public class JCClient extends JFrame {
         		if (evt.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
                     JTextPane msgPane = (JTextPane)evt.getSource();
 
+                    // first check that another receive is not in progress
+                    if(filereceiver.isReceiveInProgress()) {
+                    	writeErrorToScreen(sanitize("Another file receive is in progress!"));
+                    	return;
+                    }
                     
                     // from, filename, id, filesize
                     String fileInfo = evt.getDescription();
@@ -109,8 +119,12 @@ public class JCClient extends JFrame {
         	        if (returnVal == JFileChooser.APPROVE_OPTION) {
         	            File file = filechooser.getSelectedFile();
         	            String newFilename = file.getName();
-        	           // commLoop.sendMessage( jcmf.requestFileReceive(arg_tokens[0], filesize_str, filename));
-        	            writeFileSaveToScreen(originalFilename, newFilename);
+        	            if(filereceiver.startFileUpload(file, filesize)) {
+        	            	commLoop.sendMessage( jcmf.requestFileReceive(currentUser.getUsername(), id_str));
+        	            	writeFileSaveToScreen(originalFilename, newFilename);
+        	            } else {
+        	            	writeErrorToScreen(sanitize("Could not start file receive, client error."));
+        	            }     
         	        } else {
         	        	// file selection canceled
         	        	writeLineToScreen(makeBold(sanitize("File receive canceled.")));
@@ -191,8 +205,6 @@ public class JCClient extends JFrame {
                 hostName);
             System.exit(1);
         }
-    	filechooser = new JFileChooser();
-    	filesender = new JCFileSender();
     	jcmf = new JCMFactory();
     	currentUser = new User(null, null);
     	commLoop = new CommLoop(server);
@@ -654,6 +666,8 @@ public class JCClient extends JFrame {
 			
 			// save start offset
 			this.transferStart = offset + 1;
+			
+			int beforeInsert = msgDocument.getLength();
 			try {
 				msgKit.insertHTML(msgDocument, offset + 1, str, 0, 0, null);
 			} catch (IOException e) {
@@ -663,7 +677,8 @@ public class JCClient extends JFrame {
 			// now scroll to the end
 			int end = msgDocument.getLength();
 			// get end offset
-			this.transferEnd = end - whiteSpaceLen;
+			this.transferEnd = transferStart + (end - beforeInsert);
+			
 			msg.scrollRectToVisible(msg.modelToView(end));
 		} catch (BadLocationException e) {
 			e.printStackTrace();
@@ -752,11 +767,9 @@ public class JCClient extends JFrame {
 		case REQUEST_SEND_FILE:
 			
 			if(success) {
-				System.out.println("request send file success response");
 				// check that file send is in progress
 				if(filesender.isSendInProgress()) {
 					// send the first chunk
-					System.out.println("sending file chunk");
 					commLoop.sendMessage(jcmf.sendFileChunk(filesender.getNextChunk()));
 				} else {
 					// send is not in progress, error?
@@ -764,7 +777,6 @@ public class JCClient extends JFrame {
 				}
 			} else {
 				// rejected file send, so cancel it client side
-				System.out.println("request send file BAD response");
 				filesender.cancelSend();
 			}
 			break;
@@ -786,6 +798,55 @@ public class JCClient extends JFrame {
 				writeErrorToScreen(sanitize("> File transfer canceled."));
 			}
 			break;
+		case REQUEST_RECEIVE_FILE:
+			if(success){
+				if(filereceiver.isReceiveInProgress()) {
+					// request first chunk
+					commLoop.sendMessage(jcmf.receiveFileChunk());
+				} else {
+					// receive not in progress, error?
+					System.err.println("Server accepted file transfer but receive is not in progress");
+				}
+				
+			} else {
+				// cancel receive
+				filereceiver.cancelReceive();
+			}
+			break;
+		case RECEIVE_FILE_CHUNK:
+			if(success){
+				if(filereceiver.isReceiveInProgress()) {
+					// put current chunk in file
+					for(JavaChatMessage msg : msgContainer.replies) {
+						if(msg.getMessageType() == Commands.RECEIVE_FILE_CHUNK.getId()) {
+							try {
+								filereceiver.receiveFileChunk(msg.messageDataBin);
+							} catch (IllegalArgumentException e) {
+								// file exceeds expecte size
+							
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					}
+					
+					// check if complete
+					if(filereceiver.isReceiveComplete()) {
+						writeLineToScreen(sanitize("> File receive complete."));
+					} else {
+						// send another chunk
+						commLoop.sendMessage(jcmf.receiveFileChunk());
+					}
+				} else {
+					// send is not in progress, error?
+					System.err.println("Server accepted file transfer but receive is not in progress");
+				}
+			}else {
+				// cancel receive
+				filereceiver.cancelReceive();
+				writeErrorToScreen(sanitize("> File receive canceled."));
+			}
 		default:
 			// nothing to do
 			break;
@@ -871,6 +932,10 @@ public class JCClient extends JFrame {
 								// new transfer progress
 								writeLineToScreen(sanitize("> " + inMessage.getMessageData()));
 								writeNewTransferProgress(makeGreen(sanitize("> Transfered 0%.")));
+								break;
+							}
+							case RECEIVE_FILE_CHUNK:{
+								// don't print anything
 								break;
 							}
 							default: {

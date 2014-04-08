@@ -72,10 +72,13 @@ public class CommLoop implements Runnable {
 				}
 				
 				// read reply from server
-				JavaChatMessage inMessage = server.readMessage();	
+				JavaChatMessage inMessage = server.readMessage();
 				System.out.println("got reply :\n" + inMessage);
 				currentMessageReplies.add(inMessage);
-				if (inMessage.getMessageType() == sentType) {
+				
+				// accept same message type or else badly formatted message type
+				if (inMessage.getMessageType() == sentType 
+						|| inMessage.getMessageType() == Commands.BADLY_FORMATTED_MSG.getId()) {
 					sameReplyTypeReceived = true;
 				}
 				try {
